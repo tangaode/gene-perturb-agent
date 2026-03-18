@@ -1,0 +1,12 @@
+[
+  {"gene": "EGR1", "effect_score": 0.19, "delta_sign": "down", "p_up": 0.25, "p_down": 0.75},
+  {"gene": "CEBPD", "effect_score": 0.18, "delta_sign": "down", "p_up": 0.10, "p_down": 0.90},
+  {"gene": "JUND", "effect_score": 0.17, "delta_sign": "down", "p_up": 0.20, "p_down": 0.80},
+  {"gene": "FMOD", "effect_score": 0.16, "delta_sign": "up", "p_up": 0.85, "p_down": 0.15},
+  {"gene": "BTG2", "effect_score": 0.16, "delta_sign": "up", "p_up": 0.75, "p_down": 0.25},
+  {"gene": "IGFBP7", "effect_score": 0.15, "delta_sign": "down", "p_up": 0.40, "p_down": 0.60},
+  {"gene": "GAS5", "effect_score": 0.12, "delta_sign": "down", "p_up": 0.15, "p_down": 0.85},
+  {"gene": "PLOD2", "effect_score": 0.11, "delta_sign": "down", "p_up": 0.10, "p_down": 0.90},
+  {"gene": "XIST", "effect_score": 0.10, "delta_sign": "down", "p_up": 0.05, "p_down": 0.95},
+  {"gene": "RPL19", "effect_score": 0.08, "delta_sign": "down", "p_up": 0.30, "p_down": 0.70}
+]

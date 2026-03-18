@@ -1,0 +1,49 @@
+version: "3.9"
+services:
+  virtualcell_service:
+    build: ./backend/virtualcell_service
+    environment:
+      - MTX_DIR=/data/mtx
+      - VCACHE_DIR=/data/cache
+      # optional tuning
+      - VC_N_SUBSAMPLE=15
+      - VC_N_RUNS=20
+      - VC_N_TOP_GENES=2500
+      - VC_RETURN_TOPN=500
+    volumes:
+      - ${MTX_DIR_HOST}:/data/mtx:ro
+      - ${VCACHE_DIR_HOST}:/data/cache
+    ports:
+      - "8001:8001"
+  evidence_service:
+    build: ./backend/evidence_service
+    env_file: .env
+    ports:
+      - "8002:8002"
+  agent_api:
+    build: ./backend/agent_api
+    env_file: .env
+    environment:
+      - VIRTUALCELL_URL=${VIRTUALCELL_URL}
+      - EVIDENCE_URL=${EVIDENCE_URL}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
+      - OLLAMA_MODEL=${OLLAMA_MODEL}
+      - NCBI_API_KEY=${NCBI_API_KEY}
+      - UP_P_THRESHOLD=${UP_P_THRESHOLD}
+      - DOWN_P_THRESHOLD=${DOWN_P_THRESHOLD}
+      - TOPN_CANDIDATES=${TOPN_CANDIDATES}
+      - VERIFY_TOPK=${VERIFY_TOPK}
+    depends_on:
+      - virtualcell_service
+      - evidence_service
+    ports:
+      - "8000:8000"
+    # Linux only: uncomment to reach host Ollama
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
+  web:
+    build: ./frontend/web
+    ports:
+      - "3000:80"
+    depends_on:
+      - agent_api

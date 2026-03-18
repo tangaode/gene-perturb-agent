@@ -1,0 +1,30 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# Virtual env
+.venv/
+venv/
+
+# Local runtime data
+.env.local
+logs/
+run/
+cache/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Node
+node_modules/
+
+# Local secrets
+*.pem
+*.key

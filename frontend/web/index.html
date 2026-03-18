@@ -1,0 +1,119 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gene Perturb Agent</title>
+  <style>
+    :root { --bg: #0b1014; --panel: #131a21; --text: #e6edf3; --accent: #00d4ff; --muted: #9fb3c8; }
+    body { margin: 0; font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; background: radial-gradient(1200px 800px at 20% 0%, #16212b, #0b1014); color: var(--text); }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 24px 20px 40px; }
+    h1 { font-weight: 700; letter-spacing: 0.5px; margin: 0 0 12px; }
+    .small { color: var(--muted); font-size: 12px; }
+    .panel { background: var(--panel); border: 1px solid #1f2a35; border-radius: 12px; padding: 16px; margin: 16px 0; }
+    .chat { min-height: 320px; max-height: 520px; overflow: auto; padding: 8px; }
+    .msg { display: flex; margin: 10px 0; }
+    .msg.user { justify-content: flex-end; }
+    .bubble { max-width: 82%; padding: 10px 12px; border-radius: 10px; line-height: 1.45; white-space: pre-wrap; }
+    .user .bubble { background: #1f2f3a; border: 1px solid #274052; }
+    .assistant .bubble { background: #0f141a; border: 1px solid #1f2a35; }
+    .input-row { display: flex; gap: 8px; margin-top: 8px; }
+    input { flex: 1; padding: 10px; background: #0f141a; border: 1px solid #273240; color: var(--text); border-radius: 8px; }
+    button { padding: 10px 16px; background: var(--accent); border: none; color: #001018; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Gene Perturb Agent</h1>
+    <div class="small">Input example: <code>TP53</code> or <code>TP53 alpha=0.5 context=default</code></div>
+    <div class="panel">
+      <div class="chat" id="chat"></div>
+      <div class="input-row">
+        <input id="input" placeholder="Example: TP53 or TP53 alpha=0.7" />
+        <button id="send">Send</button>
+      </div>
+      <div id="status" class="small"></div>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const overrideApi = params.get("api");
+    const defaultApi = `${window.location.protocol}//${window.location.hostname}:8000/run`;
+    const API_URL = overrideApi || window.localStorage.getItem("GENE_AGENT_API_URL") || defaultApi;
+
+    const chat = document.getElementById("chat");
+    const input = document.getElementById("input");
+    const btn = document.getElementById("send");
+    const status = document.getElementById("status");
+
+    function addMsg(role, text) {
+      const msg = document.createElement("div");
+      msg.className = `msg ${role}`;
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text;
+      msg.appendChild(bubble);
+      chat.appendChild(msg);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function parseRequest(text) {
+      const geneMatch = text.match(/[A-Za-z0-9-]+/);
+      const alphaMatch = text.match(/alpha\s*=\s*([0-9]*\.?[0-9]+)/i);
+      const contextMatch = text.match(/context\s*=\s*([A-Za-z0-9_-]+)/i);
+      const gene = geneMatch ? geneMatch[0].toUpperCase() : "";
+      const alpha = alphaMatch ? Number(alphaMatch[1]) : 1.0;
+      const context = contextMatch ? contextMatch[1] : "default";
+      return { gene, alpha, context };
+    }
+
+    function renderResult(data) {
+      const up = (data.top_up || []).map((x, i) => `${i + 1}. ${x.gene} (score=${x.score.toFixed(3)}, conf=${x.confidence.toFixed(3)})`).join("\n");
+      const down = (data.top_down || []).map((x, i) => `${i + 1}. ${x.gene} (score=${x.score.toFixed(3)}, conf=${x.confidence.toFixed(3)})`).join("\n");
+      const summary = data.meta?.summary ? `\n\nSummary:\n${data.meta.summary}` : "";
+      return `Top Up\n${up || "none"}\n\nTop Down\n${down || "none"}${summary}`;
+    }
+
+    async function run() {
+      const text = input.value.trim();
+      if (!text) return;
+      const req = parseRequest(text);
+      if (!req.gene) {
+        status.textContent = "Could not parse gene symbol.";
+        return;
+      }
+
+      addMsg("user", text);
+      input.value = "";
+      btn.disabled = true;
+      status.textContent = `Running ${req.gene}...`;
+
+      try {
+        const resp = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(req)
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        const data = await resp.json();
+        addMsg("assistant", renderResult(data));
+        status.textContent = "Done";
+      } catch (e) {
+        addMsg("assistant", `Error: ${e.message}`);
+        status.textContent = "Error";
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    btn.onclick = run;
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") run();
+    });
+
+    addMsg("assistant", "Ready. Please enter a gene symbol.");
+  </script>
+</body>
+</html>
