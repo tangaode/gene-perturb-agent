@@ -10,26 +10,32 @@ function Run-Checked([string]$file, [string[]]$args) {
   }
 }
 
-function Get-PythonCmd() {
-  $py = Get-Command py -ErrorAction SilentlyContinue
-  if ($py) {
-    & py -3.11 -c "import sys" 2>$null | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-      return @("py", @("-3.11"))
-    }
-  }
-  return @("python", @())
+$usePyLauncher = $false
+& py -3.11 -c "import sys" 2>$null | Out-Null
+if ($LASTEXITCODE -eq 0) {
+  $usePyLauncher = $true
 }
 
-$pyCmd = Get-PythonCmd
-$pyExe = $pyCmd[0]
-$pyPrefixArgs = $pyCmd[1]
+function Invoke-BasePython([string[]]$args) {
+  if ($usePyLauncher) {
+    & py -3.11 @args
+  } else {
+    & python @args
+  }
+  if ($LASTEXITCODE -ne 0) {
+    throw "Base Python command failed: $($args -join ' ')"
+  }
+}
 
-$verText = & $pyExe @pyPrefixArgs -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
-if ($LASTEXITCODE -ne 0) {
+if ($usePyLauncher) {
+  $verText = (& py -3.11 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')").Trim()
+} else {
+  $verText = (& python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')").Trim()
+}
+if (-not $verText) {
   throw "Python not found. Please install Python 3.11 first."
 }
-$parts = $verText.Trim().Split(".")
+$parts = $verText.Split(".")
 $major = [int]$parts[0]
 $minor = [int]$parts[1]
 if ($major -lt 3 -or ($major -eq 3 -and $minor -lt 10)) {
@@ -40,8 +46,7 @@ $venv = Join-Path $repo ".venv"
 $venvPy = Join-Path $venv "Scripts\python.exe"
 
 if (-not (Test-Path $venvPy)) {
-  $venvArgs = $pyPrefixArgs + @("-m", "venv", $venv)
-  Run-Checked $pyExe $venvArgs
+  Invoke-BasePython @("-m", "venv", $venv)
 }
 
 Run-Checked $venvPy @("-m", "pip", "install", "--upgrade", "pip")
