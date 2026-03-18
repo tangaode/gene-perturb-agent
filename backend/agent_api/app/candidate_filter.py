@@ -19,4 +19,24 @@ def filter_candidates(results: List[Dict]):
 
     up = sorted(up, key=lambda x: x["rank_score"], reverse=True)[:TOPN_CANDIDATES]
     down = sorted(down, key=lambda x: x["rank_score"], reverse=True)[:TOPN_CANDIDATES]
+
+    # Fallback: if strict direction+threshold leaves empty pool, use soft ranking.
+    if not up:
+        soft_up = []
+        for r in results:
+            p_up = float(r.get("p_up", 0.0))
+            score = float(r.get("effect_score", 0.0)) * p_up
+            if score > 0:
+                soft_up.append({**r, "delta_sign": "up", "rank_score": score})
+        up = sorted(soft_up, key=lambda x: x["rank_score"], reverse=True)[:TOPN_CANDIDATES]
+
+    if not down:
+        soft_down = []
+        for r in results:
+            p_down = float(r.get("p_down", 0.0))
+            score = float(r.get("effect_score", 0.0)) * p_down
+            if score > 0:
+                soft_down.append({**r, "delta_sign": "down", "rank_score": score})
+        down = sorted(soft_down, key=lambda x: x["rank_score"], reverse=True)[:TOPN_CANDIDATES]
+
     return up, down

@@ -51,5 +51,7 @@ def rank_candidates(candidates: List[Dict], reports: List[Dict], direction: str,
         s for s in scores
         if not (s["evidence_rel"] == 0 and s["model_dirprob"] < 0.7)
     ]
+    if not filtered:
+        filtered = scores
     ranked = sorted(filtered, key=lambda x: x["score"], reverse=True)
     return ranked
