@@ -16,7 +16,7 @@ cd gene-perturb-agent
 
 首次启动只需输入：
 - `MTX_DIR`（用户本地 10x 文件夹）
-- `LLM_API_KEY`（仅在你未配置中转 API 时需要）
+- `LLM_API_KEY`（仅在 `LLM_BACKEND=deepseek/openai` 时需要；`relay` 开放模式不需要）
 
 `MTX_DIR` 需包含：
 - `matrix.mtx` 或 `matrix.mtx.gz`
@@ -53,7 +53,8 @@ cd gene-perturb-agent
 LLM_BACKEND=relay
 LLM_BASE_URL=https://your-relay-domain/v1
 LLM_MODEL=deepseek-chat
-LLM_API_KEY=your-relay-token
+# relay 开放模式可留空
+LLM_API_KEY=
 ```
 
 ### B) DeepSeek direct mode

@@ -76,12 +76,11 @@ if (-not $envMap.ContainsKey("VC_RETURN_TOPN")) { $envMap["VC_RETURN_TOPN"] = "3
 if (-not $envMap.ContainsKey("VERIFY_TOPK")) { $envMap["VERIFY_TOPK"] = "10" }
 if (-not $envMap.ContainsKey("NO_PROXY")) { $envMap["NO_PROXY"] = "localhost,127.0.0.1" }
 
-# Ask key only when needed.
+# Ask key only for direct provider mode.
 $backend = "$($envMap["LLM_BACKEND"])".ToLower()
-if (($backend -eq "deepseek" -or $backend -eq "openai" -or $backend -eq "relay") -and `
+if (($backend -eq "deepseek" -or $backend -eq "openai") -and `
     (-not $envMap.ContainsKey("LLM_API_KEY") -or [string]::IsNullOrWhiteSpace($envMap["LLM_API_KEY"]))) {
-  $prompt = if ($backend -eq "relay") { "Enter Relay token (or press Enter if relay is open)" } else { "Enter DeepSeek API key (sk-...)" }
-  $envMap["LLM_API_KEY"] = Read-Host $prompt
+  $envMap["LLM_API_KEY"] = Read-Host "Enter DeepSeek API key (sk-...)"
 }
 
 Save-EnvMap $envFile $envMap
