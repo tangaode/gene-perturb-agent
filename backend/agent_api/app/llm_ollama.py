@@ -39,18 +39,17 @@ def chat(messages, options=None):
         data = resp.json()
         return data.get("message", {}).get("content", "")
 
-    if not OPENAI_KEY:
-        raise ValueError("LLM_API_KEY is required when LLM_BACKEND is not ollama")
+    if not OPENAI_KEY and BACKEND in ("deepseek", "openai"):
+        raise ValueError("LLM_API_KEY is required when LLM_BACKEND is deepseek/openai")
 
     payload = {
         "model": OPENAI_MODEL,
         "messages": messages,
         "temperature": 0.2,
     }
-    headers = {
-        "Authorization": f"Bearer {OPENAI_KEY}",
-        "Content-Type": "application/json",
-    }
+    headers = {"Content-Type": "application/json"}
+    if OPENAI_KEY:
+        headers["Authorization"] = f"Bearer {OPENAI_KEY}"
     resp = requests.post(
         f"{OPENAI_BASE}/chat/completions",
         json=payload,

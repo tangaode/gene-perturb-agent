@@ -54,10 +54,6 @@ if (-not [string]::IsNullOrWhiteSpace($MtxDir)) {
   $envMap["MTX_DIR"] = $MtxDir
 }
 
-if (-not $envMap.ContainsKey("LLM_API_KEY") -or [string]::IsNullOrWhiteSpace($envMap["LLM_API_KEY"])) {
-  $envMap["LLM_API_KEY"] = Read-Host "Enter DeepSeek API key (sk-...)"
-}
-
 while (-not (Test-MtxDir $envMap["MTX_DIR"])) {
   if ($envMap.ContainsKey("MTX_DIR") -and -not [string]::IsNullOrWhiteSpace($envMap["MTX_DIR"])) {
     Write-Host "Invalid MTX_DIR: $($envMap["MTX_DIR"])" -ForegroundColor Yellow
@@ -67,8 +63,8 @@ while (-not (Test-MtxDir $envMap["MTX_DIR"])) {
 }
 
 # Defaults for easy mode
-if (-not $envMap.ContainsKey("LLM_BACKEND")) { $envMap["LLM_BACKEND"] = "deepseek" }
-if (-not $envMap.ContainsKey("LLM_BASE_URL")) { $envMap["LLM_BASE_URL"] = "https://api.deepseek.com/v1" }
+if (-not $envMap.ContainsKey("LLM_BACKEND")) { $envMap["LLM_BACKEND"] = "relay" }
+if (-not $envMap.ContainsKey("LLM_BASE_URL")) { $envMap["LLM_BASE_URL"] = "https://your-relay-domain/v1" }
 if (-not $envMap.ContainsKey("LLM_MODEL")) { $envMap["LLM_MODEL"] = "deepseek-chat" }
 if (-not $envMap.ContainsKey("VIRTUALCELL_URL")) { $envMap["VIRTUALCELL_URL"] = "http://localhost:8001" }
 if (-not $envMap.ContainsKey("EVIDENCE_URL")) { $envMap["EVIDENCE_URL"] = "http://localhost:8002" }
@@ -79,6 +75,14 @@ if (-not $envMap.ContainsKey("VC_N_TOP_GENES")) { $envMap["VC_N_TOP_GENES"] = "1
 if (-not $envMap.ContainsKey("VC_RETURN_TOPN")) { $envMap["VC_RETURN_TOPN"] = "300" }
 if (-not $envMap.ContainsKey("VERIFY_TOPK")) { $envMap["VERIFY_TOPK"] = "10" }
 if (-not $envMap.ContainsKey("NO_PROXY")) { $envMap["NO_PROXY"] = "localhost,127.0.0.1" }
+
+# Ask key only when needed.
+$backend = "$($envMap["LLM_BACKEND"])".ToLower()
+if (($backend -eq "deepseek" -or $backend -eq "openai" -or $backend -eq "relay") -and `
+    (-not $envMap.ContainsKey("LLM_API_KEY") -or [string]::IsNullOrWhiteSpace($envMap["LLM_API_KEY"]))) {
+  $prompt = if ($backend -eq "relay") { "Enter Relay token (or press Enter if relay is open)" } else { "Enter DeepSeek API key (sk-...)" }
+  $envMap["LLM_API_KEY"] = Read-Host $prompt
+}
 
 Save-EnvMap $envFile $envMap
 
