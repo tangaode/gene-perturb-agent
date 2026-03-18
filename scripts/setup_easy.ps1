@@ -3,10 +3,10 @@
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repo = Resolve-Path (Join-Path $root "..")
 
-function Run-Checked([string]$file, [string[]]$args) {
-  & $file @args
+function Run-Checked([string]$file, [string[]]$cmdArgs) {
+  & $file @cmdArgs
   if ($LASTEXITCODE -ne 0) {
-    throw "Command failed: $file $($args -join ' ')"
+    throw "Command failed: $file $($cmdArgs -join ' ')"
   }
 }
 
@@ -16,14 +16,14 @@ if ($LASTEXITCODE -eq 0) {
   $usePyLauncher = $true
 }
 
-function Invoke-BasePython([string[]]$args) {
+function Invoke-BasePython([string[]]$cmdArgs) {
   if ($usePyLauncher) {
-    & py -3.11 @args
+    & py -3.11 @cmdArgs
   } else {
-    & python @args
+    & python @cmdArgs
   }
   if ($LASTEXITCODE -ne 0) {
-    throw "Base Python command failed: $($args -join ' ')"
+    throw "Base Python command failed: $($cmdArgs -join ' ')"
   }
 }
 
