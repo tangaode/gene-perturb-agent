@@ -40,7 +40,8 @@ $venv = Join-Path $repo ".venv"
 $venvPy = Join-Path $venv "Scripts\python.exe"
 
 if (-not (Test-Path $venvPy)) {
-  Run-Checked $pyExe (@pyPrefixArgs + @("-m", "venv", $venv))
+  $venvArgs = $pyPrefixArgs + @("-m", "venv", $venv)
+  Run-Checked $pyExe $venvArgs
 }
 
 Run-Checked $venvPy @("-m", "pip", "install", "--upgrade", "pip")
