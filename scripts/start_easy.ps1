@@ -1,4 +1,9 @@
-﻿$ErrorActionPreference = "Stop"
+﻿param(
+  [string]$MtxDir = "",
+  [string]$ApiKey = ""
+)
+
+$ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repo = Resolve-Path (Join-Path $root "..")
@@ -29,13 +34,36 @@ function Save-EnvMap([string]$path, $map) {
   Set-Content -Encoding UTF8 -Path $path -Value $lines
 }
 
+function Test-MtxDir([string]$dirPath) {
+  if ([string]::IsNullOrWhiteSpace($dirPath)) { return $false }
+  if (-not (Test-Path $dirPath -PathType Container)) { return $false }
+
+  $hasMatrix = (Test-Path (Join-Path $dirPath "matrix.mtx")) -or (Test-Path (Join-Path $dirPath "matrix.mtx.gz"))
+  $hasFeatures = (Test-Path (Join-Path $dirPath "features.tsv")) -or (Test-Path (Join-Path $dirPath "features.tsv.gz")) -or (Test-Path (Join-Path $dirPath "genes.tsv")) -or (Test-Path (Join-Path $dirPath "genes.tsv.gz"))
+  $hasBarcodes = (Test-Path (Join-Path $dirPath "barcodes.tsv")) -or (Test-Path (Join-Path $dirPath "barcodes.tsv.gz"))
+
+  return ($hasMatrix -and $hasFeatures -and $hasBarcodes)
+}
+
 $envMap = Get-EnvMap $envFile
+
+if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
+  $envMap["LLM_API_KEY"] = $ApiKey
+}
+if (-not [string]::IsNullOrWhiteSpace($MtxDir)) {
+  $envMap["MTX_DIR"] = $MtxDir
+}
 
 if (-not $envMap.ContainsKey("LLM_API_KEY") -or [string]::IsNullOrWhiteSpace($envMap["LLM_API_KEY"])) {
   $envMap["LLM_API_KEY"] = Read-Host "Enter DeepSeek API key (sk-...)"
 }
-if (-not $envMap.ContainsKey("MTX_DIR") -or [string]::IsNullOrWhiteSpace($envMap["MTX_DIR"])) {
-  $envMap["MTX_DIR"] = Read-Host "Enter local 10x MTX folder (e.g. G:/xunixibao/data/GSM7831813)"
+
+while (-not (Test-MtxDir $envMap["MTX_DIR"])) {
+  if ($envMap.ContainsKey("MTX_DIR") -and -not [string]::IsNullOrWhiteSpace($envMap["MTX_DIR"])) {
+    Write-Host "Invalid MTX_DIR: $($envMap["MTX_DIR"])" -ForegroundColor Yellow
+    Write-Host "Required files: matrix.mtx(.gz), features/genes.tsv(.gz), barcodes.tsv(.gz)" -ForegroundColor Yellow
+  }
+  $envMap["MTX_DIR"] = Read-Host "Enter local 10x MTX folder (example: D:/scRNA/GSM7831813)"
 }
 
 # Defaults for easy mode
@@ -59,7 +87,8 @@ foreach ($k in $envMap.Keys) {
   [System.Environment]::SetEnvironmentVariable($k, $envMap[$k], "Process")
 }
 
-$env:PYTHONPATH = "G:\xunixibao\code\_deps;" + $repo.Path
+# Keep module imports simple and portable
+$env:PYTHONPATH = $repo.Path
 
 $venvPy = Join-Path $repo ".venv\Scripts\python.exe"
 if (Test-Path $venvPy) { $py = $venvPy } else { $py = "python" }
