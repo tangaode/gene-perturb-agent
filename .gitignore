@@ -15,6 +15,7 @@ venv/
 logs/
 run/
 cache/
+backend/evidence_service/*_cache.sqlite
 
 # OS/editor
 .DS_Store
