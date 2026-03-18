@@ -29,3 +29,5 @@ node_modules/
 # Local secrets
 *.pem
 *.key
+
+release/

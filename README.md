@@ -25,6 +25,23 @@ cd gene-perturb-agent
 
 然后浏览器打开 `http://localhost:3000`。
 
+## 1.1) 发布包模式（用户无需 Git/命令行）
+维护者可先生成发布包：
+```powershell
+.\scripts\build_release.ps1
+```
+生成：`release/GenePerturbAgent.zip`
+
+用户端步骤：
+1. 解压 `GenePerturbAgent.zip`
+2. 双击 `Run-Agent.bat`
+3. 首次根据提示输入本地 `MTX_DIR`
+4. 浏览器自动打开 `http://localhost:3000`
+
+可选：
+- 双击 `Configure-Agent.bat` 修改配置
+- 双击 `Stop-Agent.bat` 停止服务
+
 ## 2) Run in Web UI
 输入：
 - `TP53`
