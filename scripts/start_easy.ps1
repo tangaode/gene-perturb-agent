@@ -164,7 +164,13 @@ if ($envMap["VC_ENABLE_CLUSTERING"] -eq "1") {
       Write-Host ("  cluster {0}: {1} (n={2})" -f $parts[0].Trim(), $parts[1].Trim(), $g.Count)
     }
 
-    $labelMode = Read-Host "Label mode: keep_llm / custom (default keep_llm)"
+    $labelMode = (Read-Host "Label mode: keep_llm / custom (default keep_llm)").Trim().ToLower()
+    if ([string]::IsNullOrWhiteSpace($labelMode)) { $labelMode = "keep_llm" }
+    if ($labelMode -ne "keep_llm" -and $labelMode -ne "custom") {
+      Write-Host "Unknown label mode: $labelMode . Using keep_llm."
+      $labelMode = "keep_llm"
+    }
+
     if ($labelMode -eq "custom") {
       $byCluster = $ann | Group-Object cluster | Sort-Object Name
       foreach ($cg in $byCluster) {
@@ -182,15 +188,17 @@ if ($envMap["VC_ENABLE_CLUSTERING"] -eq "1") {
     }
   } catch {}
 
-  if (-not $envMap.ContainsKey("VC_CELL_GROUP") -or [string]::IsNullOrWhiteSpace($envMap["VC_CELL_GROUP"])) {
-    $pick = Read-Host "Pick target group (cluster:<id>, cell_type:<name>, or all)"
-    if ([string]::IsNullOrWhiteSpace($pick) -or $pick -eq "all") {
-      $envMap["VC_CELL_GROUP"] = ""
-    } else {
-      $envMap["VC_CELL_GROUP"] = $pick
-    }
-    Save-EnvMap $envFile $envMap
+  $currentGroup = ""
+  if ($envMap.ContainsKey("VC_CELL_GROUP")) { $currentGroup = "$($envMap["VC_CELL_GROUP"])" }
+  $defaultHint = if ([string]::IsNullOrWhiteSpace($currentGroup)) { "all" } else { $currentGroup }
+  $pick = Read-Host "Pick target group (cluster:<id>, cell_type:<name>, or all) [default: $defaultHint]"
+  if ([string]::IsNullOrWhiteSpace($pick)) { $pick = $defaultHint }
+  if ($pick -eq "all") {
+    $envMap["VC_CELL_GROUP"] = ""
+  } else {
+    $envMap["VC_CELL_GROUP"] = $pick
   }
+  Save-EnvMap $envFile $envMap
 }
 
 function Start-Service($name, $workdir, $module, $port) {
