@@ -19,7 +19,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 On first run, provide only:
 - `MTX_DIR` (local 10x folder)
 
-Open `http://localhost:3000` and enter a gene symbol (e.g. `TP53`).
+Open `http://localhost:3000` and enter a gene symbol (e.g. `TP53`). The UI returns Top 5 upregulated and Top 5 downregulated genes by default.
 
 ## Relay Configuration (No User API Key)
 Set in `.env.local`:
@@ -71,3 +71,7 @@ Optional launchers:
 
 ## Evidence Sources
 NCBI Gene, PubMed, GO:BP, GO:MF, GO:CC, Reactome, KEGG, WikiPathways, MSigDB Hallmark, STRING, BioGRID, CORUM.
+
+
+Set FINAL_TOPK in .env.local to change the final number of genes returned.
+

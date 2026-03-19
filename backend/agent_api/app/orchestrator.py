@@ -11,6 +11,7 @@ from .ranker import rank_candidates
 
 VIRTUALCELL_URL = os.environ.get("VIRTUALCELL_URL", "http://virtualcell_service:8001")
 VERIFY_TOPK = int(os.environ.get("VERIFY_TOPK", "10"))
+FINAL_TOPK = int(os.environ.get("FINAL_TOPK", "5"))
 VIRTUALCELL_TIMEOUT = int(os.environ.get("VIRTUALCELL_TIMEOUT", "36000"))
 
 
@@ -114,8 +115,8 @@ def run_pipeline(gene: str, alpha: float, context: str) -> Dict:
     ranked_up = rank_candidates(up_top, reports, "up", llm_rank=llm_rank_up)
     ranked_down = rank_candidates(down_top, reports, "down", llm_rank=llm_rank_down)
 
-    top_up = ranked_up[:3]
-    top_down = ranked_down[:3]
+    top_up = ranked_up[:FINAL_TOPK]
+    top_down = ranked_down[:FINAL_TOPK]
 
     # Call #4: summarization
     summary = ""
