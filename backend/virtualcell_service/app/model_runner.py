@@ -138,6 +138,8 @@ def run_virtualcell(gene: str, alpha: float, context: str = "default") -> List[G
         return _df_to_results(df)
 
     X, genes, barcodes = _load_data()
+    if gene not in genes:
+        raise ValueError(f"Input gene '{gene}' was not found in this dataset")
     X = _apply_cell_group_filter(X, barcodes)
     model = DoseDirKO(**params)
     ckpt = _ckpt_dir(gene, alpha, context, params)

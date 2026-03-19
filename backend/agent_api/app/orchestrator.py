@@ -21,7 +21,16 @@ def _call_virtualcell(gene: str, alpha: float, context: str):
         json={"gene": gene, "alpha": alpha, "context": context},
         timeout=VIRTUALCELL_TIMEOUT,
     )
-    resp.raise_for_status()
+    if not resp.ok:
+        detail = ""
+        try:
+            payload = resp.json()
+            detail = str(payload.get("detail", ""))
+        except Exception:
+            detail = resp.text[:300]
+        if resp.status_code == 400:
+            raise ValueError(detail or "invalid input gene or context")
+        raise RuntimeError(f"virtualcell error {resp.status_code}: {detail or 'unknown error'}")
     return resp.json()
 
 
