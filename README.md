@@ -76,3 +76,9 @@ NCBI Gene, PubMed, GO:BP, GO:MF, GO:CC, Reactome, KEGG, WikiPathways, MSigDB Hal
 
 Set FINAL_TOPK in .env.local to change the final number of genes returned.
 
+
+Performance defaults:
+- VERIFY_TOPK=5
+- FINAL_TOPK=5
+- EVIDENCE_TIMEOUT=600
+

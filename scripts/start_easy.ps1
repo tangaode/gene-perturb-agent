@@ -73,8 +73,9 @@ if (-not $envMap.ContainsKey("VC_N_SUBSAMPLE")) { $envMap["VC_N_SUBSAMPLE"] = "6
 if (-not $envMap.ContainsKey("VC_N_RUNS")) { $envMap["VC_N_RUNS"] = "6" }
 if (-not $envMap.ContainsKey("VC_N_TOP_GENES")) { $envMap["VC_N_TOP_GENES"] = "1800" }
 if (-not $envMap.ContainsKey("VC_RETURN_TOPN")) { $envMap["VC_RETURN_TOPN"] = "300" }
-if (-not $envMap.ContainsKey("VERIFY_TOPK")) { $envMap["VERIFY_TOPK"] = "10" }
+if (-not $envMap.ContainsKey("VERIFY_TOPK")) { $envMap["VERIFY_TOPK"] = "5" }
 if (-not $envMap.ContainsKey("FINAL_TOPK")) { $envMap["FINAL_TOPK"] = "5" }
+if (-not $envMap.ContainsKey("EVIDENCE_TIMEOUT")) { $envMap["EVIDENCE_TIMEOUT"] = "600" }
 if (-not $envMap.ContainsKey("NO_PROXY")) { $envMap["NO_PROXY"] = "localhost,127.0.0.1" }
 
 # Ask key only for direct provider mode.
