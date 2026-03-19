@@ -25,7 +25,7 @@ Open `http://localhost:3000` and enter a gene symbol (e.g. `TP53`).
 Set in `.env.local`:
 ```env
 LLM_BACKEND=relay
-LLM_BASE_URL=http://<relay-host>:8010/v1
+LLM_BASE_URL=http://123.207.10.233:8010/v1
 LLM_MODEL=deepseek-chat
 LLM_API_KEY=
 ```

@@ -78,6 +78,12 @@ if (-not $envMap.ContainsKey("NO_PROXY")) { $envMap["NO_PROXY"] = "localhost,127
 
 # Ask key only for direct provider mode.
 $backend = "$($envMap["LLM_BACKEND"])".ToLower()
+if ($backend -eq "relay") {
+  $relayUrl = "$($envMap["LLM_BASE_URL"])"
+  if ([string]::IsNullOrWhiteSpace($relayUrl) -or $relayUrl -match "your-relay-domain") {
+    $envMap["LLM_BASE_URL"] = Read-Host "Enter relay URL (example: http://123.207.10.233:8010/v1)"
+  }
+}
 if (($backend -eq "deepseek" -or $backend -eq "openai") -and `
     (-not $envMap.ContainsKey("LLM_API_KEY") -or [string]::IsNullOrWhiteSpace($envMap["LLM_API_KEY"]))) {
   $envMap["LLM_API_KEY"] = Read-Host "Enter DeepSeek API key (sk-...)"
