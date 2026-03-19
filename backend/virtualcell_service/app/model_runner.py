@@ -24,9 +24,43 @@ _DATA = None  # (X, genes)
 def _load_data():
     global _DATA
     if _DATA is None:
-        X, genes, _ = read_10x_mtx(str(DATA_DIR))
-        _DATA = (X, genes)
+        X, genes, barcodes = read_10x_mtx(str(DATA_DIR))
+        _DATA = (X, genes, barcodes)
     return _DATA
+
+
+def _apply_cell_group_filter(X, barcodes):
+    group = os.environ.get("VC_CELL_GROUP", "").strip()
+    ann_file = os.environ.get("VC_CLUSTER_META", "").strip()
+    if not group or not ann_file:
+        return X
+    p = Path(ann_file)
+    if not p.exists():
+        return X
+    try:
+        ann = pd.read_csv(p)
+    except Exception:
+        return X
+    if "barcode" not in ann.columns or "cluster" not in ann.columns:
+        return X
+    ann["barcode"] = ann["barcode"].astype(str)
+    bar_idx = {str(b): i for i, b in enumerate(barcodes)}
+    group_l = group.lower()
+    if group_l.startswith("cluster:"):
+        val = group.split(":", 1)[1]
+        sel = ann[ann["cluster"].astype(str) == str(val)]
+    elif group_l.startswith("cell_type:") and "cell_type" in ann.columns:
+        val = group.split(":", 1)[1].strip().lower()
+        sel = ann[ann["cell_type"].astype(str).str.lower() == val]
+    else:
+        # tolerant match: cluster id first, then cell_type exact if present.
+        sel = ann[ann["cluster"].astype(str) == group]
+        if sel.empty and "cell_type" in ann.columns:
+            sel = ann[ann["cell_type"].astype(str).str.lower() == group_l]
+    idx = [bar_idx[b] for b in sel["barcode"].tolist() if b in bar_idx]
+    if len(idx) < 20:
+        return X
+    return X[idx]
 
 
 def _model_params():
@@ -103,7 +137,8 @@ def run_virtualcell(gene: str, alpha: float, context: str = "default") -> List[G
         df = pd.read_csv(cache)
         return _df_to_results(df)
 
-    X, genes = _load_data()
+    X, genes, barcodes = _load_data()
+    X = _apply_cell_group_filter(X, barcodes)
     model = DoseDirKO(**params)
     ckpt = _ckpt_dir(gene, alpha, context, params)
     df = model.run(X, genes, ko_gene=gene, alpha=alpha, checkpoint_dir=str(ckpt))

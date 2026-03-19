@@ -76,6 +76,11 @@ if (-not $envMap.ContainsKey("VC_RETURN_TOPN")) { $envMap["VC_RETURN_TOPN"] = "3
 if (-not $envMap.ContainsKey("VERIFY_TOPK")) { $envMap["VERIFY_TOPK"] = "5" }
 if (-not $envMap.ContainsKey("FINAL_TOPK")) { $envMap["FINAL_TOPK"] = "5" }
 if (-not $envMap.ContainsKey("EVIDENCE_TIMEOUT")) { $envMap["EVIDENCE_TIMEOUT"] = "600" }
+if (-not $envMap.ContainsKey("VC_ENABLE_CLUSTERING")) { $envMap["VC_ENABLE_CLUSTERING"] = "0" }
+if (-not $envMap.ContainsKey("VC_CLUSTER_ANNOTATE")) { $envMap["VC_CLUSTER_ANNOTATE"] = "1" }
+if (-not $envMap.ContainsKey("VC_N_CLUSTERS")) { $envMap["VC_N_CLUSTERS"] = "8" }
+if (-not $envMap.ContainsKey("VC_CLUSTER_OUT")) { $envMap["VC_CLUSTER_OUT"] = (Join-Path $repo "outputs\\cellgroups") }
+if (-not $envMap.ContainsKey("VC_CLUSTER_META")) { $envMap["VC_CLUSTER_META"] = (Join-Path $envMap["VC_CLUSTER_OUT"] "cluster_annotations.csv") }
 if (-not $envMap.ContainsKey("NO_PROXY")) { $envMap["NO_PROXY"] = "localhost,127.0.0.1" }
 
 # Ask key only for direct provider mode.
@@ -91,6 +96,12 @@ if (($backend -eq "deepseek" -or $backend -eq "openai") -and `
   $envMap["LLM_API_KEY"] = Read-Host "Enter DeepSeek API key (sk-...)"
 }
 
+if (-not $envMap.ContainsKey("VC_CLUSTER_MODE_SELECTED")) {
+  $ans = Read-Host "Enable clustering mode before KO? (Y/N, default N)"
+  if ($ans -match '^(y|Y)') { $envMap["VC_ENABLE_CLUSTERING"] = "1" } else { $envMap["VC_ENABLE_CLUSTERING"] = "0" }
+  $envMap["VC_CLUSTER_MODE_SELECTED"] = "1"
+}
+
 Save-EnvMap $envFile $envMap
 
 # Export env to current process so child processes inherit
@@ -103,6 +114,51 @@ $env:PYTHONPATH = $repo.Path
 
 $venvPy = Join-Path $repo ".venv\Scripts\python.exe"
 if (Test-Path $venvPy) { $py = $venvPy } else { $py = "python" }
+
+if ($envMap["VC_ENABLE_CLUSTERING"] -eq "1") {
+  $clusterOut = $envMap["VC_CLUSTER_OUT"]
+  if (-not (Test-Path $clusterOut)) { New-Item -ItemType Directory -Force -Path $clusterOut | Out-Null }
+  $meta = $envMap["VC_CLUSTER_META"]
+  if (-not (Test-Path $meta)) {
+    Write-Host "Preparing cell clustering + UMAP + marker top50..."
+    $args = @(
+      (Join-Path $repo "scripts\\prepare_cell_groups.py"),
+      "--mtx-dir", $envMap["MTX_DIR"],
+      "--out-dir", $clusterOut,
+      "--top-markers", "50",
+      "--n-clusters", $envMap["VC_N_CLUSTERS"]
+    )
+    if ($envMap["VC_CLUSTER_ANNOTATE"] -eq "1") {
+      $args += "--annotate"
+    }
+    & $py $args
+    if ($LASTEXITCODE -ne 0) {
+      throw "Cell clustering preparation failed."
+    }
+    $envMap["VC_CLUSTER_META"] = (Join-Path $clusterOut "cluster_annotations.csv")
+    Save-EnvMap $envFile $envMap
+  }
+
+  try {
+    $ann = Import-Csv $envMap["VC_CLUSTER_META"]
+    $groups = $ann | Group-Object cluster, cell_type | Sort-Object Name
+    Write-Host "Available groups:"
+    foreach ($g in $groups) {
+      $parts = $g.Name.Split(",")
+      Write-Host ("  cluster:{0} | cell_type:{1} | n={2}" -f $parts[0].Trim(), $parts[1].Trim(), $g.Count)
+    }
+  } catch {}
+
+  if (-not $envMap.ContainsKey("VC_CELL_GROUP") -or [string]::IsNullOrWhiteSpace($envMap["VC_CELL_GROUP"])) {
+    $pick = Read-Host "Pick target group (cluster:<id> or cell_type:<name> or all)"
+    if ([string]::IsNullOrWhiteSpace($pick) -or $pick -eq "all") {
+      $envMap["VC_CELL_GROUP"] = ""
+    } else {
+      $envMap["VC_CELL_GROUP"] = $pick
+    }
+    Save-EnvMap $envFile $envMap
+  }
+}
 
 function Start-Service($name, $workdir, $module, $port) {
   $pidFile = Join-Path $runDir "$name.pid"
