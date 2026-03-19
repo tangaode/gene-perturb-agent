@@ -64,7 +64,7 @@ while (-not (Test-MtxDir $envMap["MTX_DIR"])) {
 
 # Defaults for easy mode
 if (-not $envMap.ContainsKey("LLM_BACKEND")) { $envMap["LLM_BACKEND"] = "relay" }
-if (-not $envMap.ContainsKey("LLM_BASE_URL")) { $envMap["LLM_BASE_URL"] = "https://your-relay-domain/v1" }
+if (-not $envMap.ContainsKey("LLM_BASE_URL")) { $envMap["LLM_BASE_URL"] = "http://123.207.10.233:8010/v1" }
 if (-not $envMap.ContainsKey("LLM_MODEL")) { $envMap["LLM_MODEL"] = "deepseek-chat" }
 if (-not $envMap.ContainsKey("VIRTUALCELL_URL")) { $envMap["VIRTUALCELL_URL"] = "http://localhost:8001" }
 if (-not $envMap.ContainsKey("EVIDENCE_URL")) { $envMap["EVIDENCE_URL"] = "http://localhost:8002" }
@@ -82,7 +82,7 @@ $backend = "$($envMap["LLM_BACKEND"])".ToLower()
 if ($backend -eq "relay") {
   $relayUrl = "$($envMap["LLM_BASE_URL"])"
   if ([string]::IsNullOrWhiteSpace($relayUrl) -or $relayUrl -match "your-relay-domain") {
-    $envMap["LLM_BASE_URL"] = Read-Host "Enter relay URL (example: http://123.207.10.233:8010/v1)"
+    $envMap["LLM_BASE_URL"] = "http://123.207.10.233:8010/v1"
   }
 }
 if (($backend -eq "deepseek" -or $backend -eq "openai") -and `

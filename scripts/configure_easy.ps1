@@ -40,6 +40,11 @@ $map["MTX_DIR"] = $MtxDir
 if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
   $map["LLM_API_KEY"] = $ApiKey
 }
+if ($Backend -eq "relay") {
+  if (-not $map.ContainsKey("LLM_BASE_URL") -or [string]::IsNullOrWhiteSpace($map["LLM_BASE_URL"]) -or $map["LLM_BASE_URL"] -match "your-relay-domain") {
+    $map["LLM_BASE_URL"] = "http://123.207.10.233:8010/v1"
+  }
+}
 
 $lines = @()
 foreach ($k in ($map.Keys | Sort-Object)) {

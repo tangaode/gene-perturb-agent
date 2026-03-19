@@ -18,6 +18,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 On first run, provide only:
 - `MTX_DIR` (local 10x folder)
+The relay endpoint is preconfigured to `http://123.207.10.233:8010/v1`.
 
 Open `http://localhost:3000` and enter a gene symbol (e.g. `TP53`). The UI returns Top 5 upregulated and Top 5 downregulated genes by default.
 
