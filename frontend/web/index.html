@@ -69,11 +69,23 @@
       return { gene, alpha, context };
     }
 
+    function renderGenes(title, rows) {
+      if (!rows || rows.length === 0) return `${title}\nnone`;
+      const lines = rows.map((x, i) => {
+        const firstEv = (x.evidence && x.evidence.length > 0) ? x.evidence[0] : null;
+        const evText = firstEv ? ` | ev:${firstEv.source}` : " | ev:none";
+        return `${i + 1}. ${x.gene} (score=${x.score.toFixed(3)}, conf=${x.confidence.toFixed(3)}${evText})`;
+      });
+      return `${title}\n${lines.join("\n")}`;
+    }
+
     function renderResult(data) {
-      const up = (data.top_up || []).map((x, i) => `${i + 1}. ${x.gene} (score=${x.score.toFixed(3)}, conf=${x.confidence.toFixed(3)})`).join("\n");
-      const down = (data.top_down || []).map((x, i) => `${i + 1}. ${x.gene} (score=${x.score.toFixed(3)}, conf=${x.confidence.toFixed(3)})`).join("\n");
-      const summary = data.meta?.summary ? `\n\nSummary:\n${data.meta.summary}` : "";
-      return `Top Up\n${up || "none"}\n\nTop Down\n${down || "none"}${summary}`;
+      const up = renderGenes("Top Up", data.top_up || []);
+      const down = renderGenes("Top Down", data.top_down || []);
+      const summary = data.meta?.summary ? `\n\nSummary:\n${data.meta.summary}` : "\n\nSummary:\n(none)";
+      const log = data.meta?.log || {};
+      const diag = `\n\nPipeline:\nllm_generation=${log.llm_generation || "na"}, evidence=${log.evidence || "na"}, llm_modification=${log.llm_modification || "na"}, llm_summary=${log.llm_summary || "na"}`;
+      return `${up}\n\n${down}${summary}${diag}`;
     }
 
     async function run() {

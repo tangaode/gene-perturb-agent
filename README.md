@@ -1,116 +1,73 @@
 ﻿# Gene Perturb Agent
 
-A local web agent for virtual gene KO from user-owned single-cell 10x MTX data.
+A local-first virtual gene perturbation agent for 10x single-cell MTX data.
 
-## Python 版本要求
-- Python >= 3.10 (推荐 3.11)
-- Python 3.9 会安装失败（如 `uvicorn==0.40.0`）
+## Requirements
+- Windows 10/11
+- Python 3.10+ (recommended 3.11)
+- Internet access to your relay endpoint
 
-## 1) Reader Setup (Windows, simplest)
+## Quick Start (PowerShell)
 ```powershell
 git clone https://github.com/<YOUR_ACCOUNT>/gene-perturb-agent.git
 cd gene-perturb-agent
+Set-ExecutionPolicy -Scope Process Bypass
 .\scripts\setup_easy.ps1
 .\scripts\start_easy.ps1
 ```
 
-首次启动只需输入：
-- `MTX_DIR`（用户本地 10x 文件夹）
-- `LLM_API_KEY`（仅在 `LLM_BACKEND=deepseek/openai` 时需要；`relay` 开放模式不需要）
+On first run, provide only:
+- `MTX_DIR` (local 10x folder)
 
-`MTX_DIR` 需包含：
-- `matrix.mtx` 或 `matrix.mtx.gz`
-- `features.tsv(.gz)` 或 `genes.tsv(.gz)`
+Open `http://localhost:3000` and enter a gene symbol (e.g. `TP53`).
+
+## Relay Configuration (No User API Key)
+Set in `.env.local`:
+```env
+LLM_BACKEND=relay
+LLM_BASE_URL=http://<relay-host>:8010/v1
+LLM_MODEL=deepseek-chat
+LLM_API_KEY=
+```
+
+## Input Data Format
+`MTX_DIR` must contain:
+- `matrix.mtx` or `matrix.mtx.gz`
+- `features.tsv(.gz)` or `genes.tsv(.gz)`
 - `barcodes.tsv(.gz)`
 
-然后浏览器打开 `http://localhost:3000`。
-
-## 1.1) 发布包模式（用户无需 Git/命令行）
-维护者可先生成发布包：
-```powershell
-.\scripts\build_release.ps1
-```
-生成：`release/GenePerturbAgent.zip`
-
-用户端步骤：
-1. 解压 `GenePerturbAgent.zip`
-2. 双击 `Run-Agent.bat`
-3. 首次根据提示输入本地 `MTX_DIR`
-4. 浏览器自动打开 `http://localhost:3000`
-
-可选：
-- 双击 `Configure-Agent.bat` 修改配置
-- 双击 `Stop-Agent.bat` 停止服务
-
-## 2) Run in Web UI
-输入：
-- `TP53`
-- `TP53 alpha=0.7 context=default`
-
-## 3) Stop
+## Stop Services
 ```powershell
 .\scripts\stop_easy.ps1
 ```
 
-## Optional: pass data path directly
+## One-Click Package (No Git for end users)
+Build package:
 ```powershell
-.\scripts\start_easy.ps1 -MtxDir "D:/mydata/GSM7831813"
+.\scripts\build_release.ps1
 ```
+Output: `release/GenePerturbAgent.zip`
 
-## Reconfigure saved local settings
-```powershell
-.\scripts\configure_easy.ps1
-```
+End user flow:
+1. Unzip `GenePerturbAgent.zip`
+2. Double-click `Run-Agent.bat`
+3. Enter local `MTX_DIR` when prompted
+4. Use the web UI at `http://localhost:3000`
 
-## LLM Backends
+Optional launchers:
+- `Configure-Agent.bat`
+- `Stop-Agent.bat`
 
-### A) Relay mode（推荐：用户无需自己的 DeepSeek key）
-在 `.env.local` 里设置：
-```env
-LLM_BACKEND=relay
-LLM_BASE_URL=https://your-relay-domain/v1
-LLM_MODEL=deepseek-chat
-# relay 开放模式可留空
-LLM_API_KEY=
-```
-
-### B) DeepSeek direct mode
-```env
-LLM_BACKEND=deepseek
-LLM_BASE_URL=https://api.deepseek.com/v1
-LLM_MODEL=deepseek-chat
-LLM_API_KEY=sk-...
-```
-
-### C) Ollama mode
-```env
-LLM_BACKEND=ollama
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=deepseek-r1:32b
-```
-
-## Relay service (cloud)
-新增目录：`backend/relay_service`
-- `POST /v1/chat/completions`
-- `POST /chat/completions`
-- `GET /health`
-
-服务端环境变量：
-- `DEEPSEEK_API_KEY`（仅保存在云端）
-- `RELAY_API_KEY`（给客户端调用中转时使用）
-- `RELAY_DEFAULT_MODEL`
-- `RELAY_RPM`
-
-## Services and ports (local)
+## Local Services / Ports
 - `agent_api`: `8000`
 - `virtualcell_service`: `8001`
 - `evidence_service`: `8002`
 - `web`: `3000`
 
-## API endpoints (local)
+## Local API Endpoints
 - `POST http://localhost:8000/run`
 - `POST http://localhost:8001/perturb`
 - `POST http://localhost:8002/verify_batch`
 
-## Evidence sources (12)
+## Evidence Sources
 NCBI Gene, PubMed, GO:BP, GO:MF, GO:CC, Reactome, KEGG, WikiPathways, MSigDB Hallmark, STRING, BioGRID, CORUM.
