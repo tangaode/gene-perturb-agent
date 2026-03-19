@@ -38,11 +38,19 @@ function Test-MtxDir([string]$dirPath) {
   if ([string]::IsNullOrWhiteSpace($dirPath)) { return $false }
   if (-not (Test-Path $dirPath -PathType Container)) { return $false }
 
-  $hasMatrix = (Test-Path (Join-Path $dirPath "matrix.mtx")) -or (Test-Path (Join-Path $dirPath "matrix.mtx.gz"))
-  $hasFeatures = (Test-Path (Join-Path $dirPath "features.tsv")) -or (Test-Path (Join-Path $dirPath "features.tsv.gz")) -or (Test-Path (Join-Path $dirPath "genes.tsv")) -or (Test-Path (Join-Path $dirPath "genes.tsv.gz"))
-  $hasBarcodes = (Test-Path (Join-Path $dirPath "barcodes.tsv")) -or (Test-Path (Join-Path $dirPath "barcodes.tsv.gz"))
+  function Is-TenXFolder([string]$p) {
+    $hasMatrix = (Test-Path (Join-Path $p "matrix.mtx")) -or (Test-Path (Join-Path $p "matrix.mtx.gz"))
+    $hasFeatures = (Test-Path (Join-Path $p "features.tsv")) -or (Test-Path (Join-Path $p "features.tsv.gz")) -or (Test-Path (Join-Path $p "genes.tsv")) -or (Test-Path (Join-Path $p "genes.tsv.gz"))
+    $hasBarcodes = (Test-Path (Join-Path $p "barcodes.tsv")) -or (Test-Path (Join-Path $p "barcodes.tsv.gz"))
+    return ($hasMatrix -and $hasFeatures -and $hasBarcodes)
+  }
 
-  return ($hasMatrix -and $hasFeatures -and $hasBarcodes)
+  if (Is-TenXFolder $dirPath) { return $true }
+
+  $sampleDirs = Get-ChildItem -Path $dirPath -Directory -Recurse -ErrorAction SilentlyContinue |
+    Where-Object { Is-TenXFolder $_.FullName } |
+    Select-Object -First 1
+  return ($null -ne $sampleDirs)
 }
 
 $envMap = Get-EnvMap $envFile
@@ -131,9 +139,17 @@ if ($envMap["VC_ENABLE_CLUSTERING"] -eq "1") {
     if ($envMap["VC_CLUSTER_ANNOTATE"] -eq "1") {
       $args += "--annotate"
     }
-    & $py $args
+    $prepOutput = & $py $args
     if ($LASTEXITCODE -ne 0) {
       throw "Cell clustering preparation failed."
+    }
+    if ($prepOutput) {
+      try {
+        $summary = ($prepOutput | Select-Object -Last 1 | ConvertFrom-Json)
+        if ($summary) {
+          Write-Host "Clustering output folder: $($summary.out_dir)"
+        }
+      } catch {}
     }
     $envMap["VC_CLUSTER_META"] = (Join-Path $clusterOut "cluster_annotations.csv")
     Save-EnvMap $envFile $envMap
@@ -141,16 +157,33 @@ if ($envMap["VC_ENABLE_CLUSTERING"] -eq "1") {
 
   try {
     $ann = Import-Csv $envMap["VC_CLUSTER_META"]
-    $groups = $ann | Group-Object cluster, cell_type | Sort-Object Name
-    Write-Host "Available groups:"
-    foreach ($g in $groups) {
+    $clusterTable = $ann | Group-Object cluster, cell_type | Sort-Object Name
+    Write-Host "LLM cluster annotation suggestions:"
+    foreach ($g in $clusterTable) {
       $parts = $g.Name.Split(",")
-      Write-Host ("  cluster:{0} | cell_type:{1} | n={2}" -f $parts[0].Trim(), $parts[1].Trim(), $g.Count)
+      Write-Host ("  cluster {0}: {1} (n={2})" -f $parts[0].Trim(), $parts[1].Trim(), $g.Count)
+    }
+
+    $labelMode = Read-Host "Label mode: keep_llm / custom (default keep_llm)"
+    if ($labelMode -eq "custom") {
+      $byCluster = $ann | Group-Object cluster | Sort-Object Name
+      foreach ($cg in $byCluster) {
+        $cid = "$($cg.Name)"
+        $current = ($cg.Group | Select-Object -First 1).cell_type
+        $newName = Read-Host "Cluster $cid label [$current]"
+        if (-not [string]::IsNullOrWhiteSpace($newName)) {
+          foreach ($row in $ann) {
+            if ("$($row.cluster)" -eq $cid) { $row.cell_type = $newName }
+          }
+        }
+      }
+      $ann | Export-Csv -Path $envMap["VC_CLUSTER_META"] -NoTypeInformation -Encoding UTF8
+      Write-Host "Updated cluster annotations saved: $($envMap["VC_CLUSTER_META"])"
     }
   } catch {}
 
   if (-not $envMap.ContainsKey("VC_CELL_GROUP") -or [string]::IsNullOrWhiteSpace($envMap["VC_CELL_GROUP"])) {
-    $pick = Read-Host "Pick target group (cluster:<id> or cell_type:<name> or all)"
+    $pick = Read-Host "Pick target group (cluster:<id>, cell_type:<name>, or all)"
     if ([string]::IsNullOrWhiteSpace($pick) -or $pick -eq "all") {
       $envMap["VC_CELL_GROUP"] = ""
     } else {

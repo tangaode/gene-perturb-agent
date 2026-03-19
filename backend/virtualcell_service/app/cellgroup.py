@@ -50,8 +50,14 @@ def cluster_cells(
     return labels, pcs, Xn
 
 
-def compute_top_markers(Xn: sparse.csr_matrix, genes: List[str], labels: np.ndarray, top_n: int = 50) -> Dict[int, List[str]]:
+def compute_top_markers(
+    Xn: sparse.csr_matrix,
+    genes: List[str],
+    labels: np.ndarray,
+    top_n: int = 50,
+) -> Tuple[Dict[int, List[str]], pd.DataFrame]:
     out: Dict[int, List[str]] = {}
+    rows = []
     uniq = np.unique(labels)
     for c in uniq:
         in_mask = labels == c
@@ -63,8 +69,19 @@ def compute_top_markers(Xn: sparse.csr_matrix, genes: List[str], labels: np.ndar
         mu_out = np.asarray(Xn[out_mask].mean(axis=0)).ravel()
         score = np.log2((mu_in + 1e-6) / (mu_out + 1e-6))
         idx = np.argsort(-score)[:top_n]
-        out[int(c)] = [genes[i] for i in idx if score[i] > 0]
-    return out
+        keep = [int(i) for i in idx if score[i] > 0]
+        out[int(c)] = [genes[i] for i in keep]
+        for rank, i in enumerate(keep, start=1):
+            rows.append({
+                "cluster": int(c),
+                "rank": rank,
+                "gene": genes[i],
+                "log2fc": float(score[i]),
+                "mean_in": float(mu_in[i]),
+                "mean_out": float(mu_out[i]),
+            })
+    marker_df = pd.DataFrame(rows)
+    return out, marker_df
 
 
 def run_umap(pcs: np.ndarray, random_state: int = 42):
@@ -83,6 +100,7 @@ def save_outputs(
     labels: np.ndarray,
     umap_xy: np.ndarray,
     markers: Dict[int, List[str]],
+    marker_table: pd.DataFrame,
     cell_type_map: Dict[int, str],
 ):
     outp = Path(out_dir)
@@ -106,21 +124,36 @@ def save_outputs(
 
     with open(outp / "cluster_markers_top50.json", "w", encoding="utf-8") as f:
         json.dump({str(k): v for k, v in markers.items()}, f, ensure_ascii=False, indent=2)
+    marker_table.to_csv(outp / "cluster_markers_top50.csv", index=False)
 
-    # UMAP plot
+    # UMAP plot without annotation
     try:
         import matplotlib.pyplot as plt
         plt.figure(figsize=(8, 6))
         uniq = np.unique(labels)
         for c in uniq:
             m = labels == c
-            name = cell_type_map.get(int(c), f"cluster_{int(c)}")
-            plt.scatter(umap_xy[m, 0], umap_xy[m, 1], s=6, alpha=0.75, label=f"{name}")
+            plt.scatter(umap_xy[m, 0], umap_xy[m, 1], s=6, alpha=0.75, label=f"cluster_{int(c)}")
         plt.xlabel("UMAP1")
         plt.ylabel("UMAP2")
-        plt.title("Cell Clusters UMAP")
+        plt.title("Cell Clusters UMAP (raw clusters)")
         plt.legend(markerscale=2, fontsize=7, loc="best")
         plt.tight_layout()
+        plt.savefig(outp / "umap_clusters_unannotated.png", dpi=220)
+        plt.close()
+
+        # UMAP plot with annotation
+        plt.figure(figsize=(8, 6))
+        for c in uniq:
+            m = labels == c
+            name = cell_type_map.get(int(c), f"cluster_{int(c)}")
+            plt.scatter(umap_xy[m, 0], umap_xy[m, 1], s=6, alpha=0.75, label=name)
+        plt.xlabel("UMAP1")
+        plt.ylabel("UMAP2")
+        plt.title("Cell Clusters UMAP (annotated)")
+        plt.legend(markerscale=2, fontsize=7, loc="best")
+        plt.tight_layout()
+        plt.savefig(outp / "umap_clusters_annotated.png", dpi=220)
         plt.savefig(outp / "umap_clusters.png", dpi=220)
         plt.close()
     except Exception:

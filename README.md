@@ -1,37 +1,48 @@
-﻿# Gene Perturb Agent
+# Gene Perturb Agent
 
-A local-first virtual gene perturbation agent for 10x single-cell MTX data.
+Local-first virtual gene perturbation agent for 10x single-cell MTX datasets.
 
 ## Requirements
 - Windows 10/11
-- Python 3.10+ (recommended 3.11)
-- Internet access to relay endpoint for LLM calls
+- Python 3.10+
+- Internet access to the relay endpoint for LLM calls
 
 ## Quick Start (PowerShell)
 ```powershell
-git clone https://github.com/<YOUR_ACCOUNT>/gene-perturb-agent.git
+git clone https://github.com/tangaode/gene-perturb-agent.git
 cd gene-perturb-agent
 Set-ExecutionPolicy -Scope Process Bypass
 .\scripts\setup_easy.ps1
 .\scripts\start_easy.ps1
 ```
 
-## Built-in Clustering Workflow
-When starting, launcher can enable clustering mode:
-1. Run local clustering on single-cell matrix
-2. Export UMAP figure to output folder
-3. Extract Top50 marker genes per cluster
-4. Use LLM to assign cell-type labels to clusters (optional)
-5. Ask user to select target group (`cluster:<id>` or `cell_type:<name>`)
-6. Run KO only on selected cell group
+## Input Data
+`MTX_DIR` supports:
+- A single 10x folder containing `matrix.mtx(.gz)`, `features.tsv(.gz)`/`genes.tsv(.gz)`, and `barcodes.tsv(.gz)`.
+- A parent folder containing multiple 10x sample folders (recursive discovery). All detected samples are merged by union gene space; barcodes are prefixed by sample folder name.
+
+## Clustering and Cell-Group Selection
+When clustering mode is enabled, the launcher performs:
+1. Cell clustering and UMAP projection.
+2. Top-50 marker extraction per cluster.
+3. LLM-based cluster label suggestion.
+4. Optional manual label override in PowerShell.
+5. Target group selection by `cluster:<id>` or `cell_type:<name>`.
+
+## Clustering Outputs
+Default output directory: `outputs/cellgroups/`
 
 Generated files:
-- `outputs/cellgroups/umap_clusters.png`
-- `outputs/cellgroups/cluster_annotations.csv`
-- `outputs/cellgroups/cluster_markers_top50.json`
+- `cluster_annotations.csv`: barcode-level cluster and cell-type labels.
+- `umap_coords.csv`: UMAP coordinates.
+- `umap_clusters_unannotated.png`: UMAP colored by raw cluster IDs.
+- `umap_clusters_annotated.png`: UMAP colored by final cell-type labels.
+- `umap_clusters.png`: alias of the annotated UMAP for backward compatibility.
+- `cluster_markers_top50.json`: Top-50 marker genes per cluster.
+- `cluster_markers_top50.csv`: marker table with `cluster`, `rank`, `gene`, `log2fc`, `mean_in`, and `mean_out`.
 
-## Relay Configuration (No User API Key)
-Set in `.env.local`:
+## Relay Configuration
+Default `.env.local` values:
 ```env
 LLM_BACKEND=relay
 LLM_BASE_URL=http://123.207.10.233:8010/v1
@@ -39,32 +50,24 @@ LLM_MODEL=deepseek-chat
 LLM_API_KEY=
 ```
 
-## Input Data Format
-`MTX_DIR` must contain:
-- `matrix.mtx` or `matrix.mtx.gz`
-- `features.tsv(.gz)` or `genes.tsv(.gz)`
-- `barcodes.tsv(.gz)`
+## Prediction Output
+Default final output is Top-5 upregulated and Top-5 downregulated genes (`FINAL_TOPK=5`).
 
-## Outputs
-Default final output: Top 5 upregulated + Top 5 downregulated genes (`FINAL_TOPK=5`).
-
-## One-Click Package (No Git for end users)
-Build package:
+## One-Click Package
+Build:
 ```powershell
 .\scripts\build_release.ps1
 ```
-Output: `release/GenePerturbAgent.zip`
 
-End user flow:
-1. Unzip `GenePerturbAgent.zip`
-2. Double-click `Run-Agent.bat`
-3. Enter local `MTX_DIR`
-4. (Optional) enable clustering and select cell group
-5. Use web UI at `http://localhost:3000`
+Package:
+- `release/GenePerturbAgent.zip`
 
-Optional launchers:
-- `Configure-Agent.bat`
-- `Stop-Agent.bat`
+End-user flow:
+1. Unzip `GenePerturbAgent.zip`.
+2. Run `Run-Agent.bat`.
+3. Enter `MTX_DIR`.
+4. Optionally run clustering and select a cell group.
+5. Open `http://localhost:3000`.
 
 ## Local Services / Ports
 - `agent_api`: `8000`
