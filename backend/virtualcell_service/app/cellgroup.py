@@ -161,46 +161,50 @@ def save_outputs(
 
 
 def annotate_clusters_with_llm(markers: Dict[int, List[str]]) -> Dict[int, str]:
-    backend = os.environ.get("LLM_BACKEND", "relay").lower()
-    if backend == "ollama":
-        base = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
-        model = os.environ.get("OLLAMA_MODEL", "deepseek-r1")
-        payload = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": "Return JSON only: {\"labels\": {\"0\":\"...\"}}"},
-                {"role": "user", "content": f"Markers by cluster (top50): {json.dumps(markers)}"},
-            ],
-            "stream": False,
-        }
-        import requests
-        r = requests.post(f"{base}/api/chat", json=payload, timeout=120)
-        r.raise_for_status()
-        txt = r.json().get("message", {}).get("content", "")
-    else:
-        base = os.environ.get("LLM_BASE_URL", "http://123.207.10.233:8010/v1").rstrip("/")
-        model = os.environ.get("LLM_MODEL", "deepseek-chat")
-        key = os.environ.get("LLM_API_KEY", "")
-        headers = {"Content-Type": "application/json"}
-        if key:
-            headers["Authorization"] = f"Bearer {key}"
-        payload = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": "You are a single-cell annotation expert. Return JSON only: {\"labels\": {\"0\":\"cell type\"}}."},
-                {"role": "user", "content": f"Markers by cluster (top50): {json.dumps(markers)}"},
-            ],
-            "temperature": 0.0,
-        }
-        import requests
-        r = requests.post(f"{base}/chat/completions", json=payload, headers=headers, timeout=120)
-        r.raise_for_status()
-        txt = r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+    fallback = {int(k): f"cluster_{k}" for k in markers.keys()}
+    try:
+        backend = os.environ.get("LLM_BACKEND", "relay").lower()
+        if backend == "ollama":
+            base = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+            model = os.environ.get("OLLAMA_MODEL", "deepseek-r1")
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": "Return JSON only: {\"labels\": {\"0\":\"...\"}}"},
+                    {"role": "user", "content": f"Markers by cluster (top50): {json.dumps(markers)}"},
+                ],
+                "stream": False,
+            }
+            import requests
+            r = requests.post(f"{base}/api/chat", json=payload, timeout=120)
+            r.raise_for_status()
+            txt = r.json().get("message", {}).get("content", "")
+        else:
+            base = os.environ.get("LLM_BASE_URL", "http://123.207.10.233:8010/v1").rstrip("/")
+            model = os.environ.get("LLM_MODEL", "deepseek-chat")
+            key = os.environ.get("LLM_API_KEY", "")
+            headers = {"Content-Type": "application/json"}
+            if key:
+                headers["Authorization"] = f"Bearer {key}"
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": "You are a single-cell annotation expert. Return JSON only: {\"labels\": {\"0\":\"cell type\"}}."},
+                    {"role": "user", "content": f"Markers by cluster (top50): {json.dumps(markers)}"},
+                ],
+                "temperature": 0.0,
+            }
+            import requests
+            r = requests.post(f"{base}/chat/completions", json=payload, headers=headers, timeout=120)
+            r.raise_for_status()
+            txt = r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+    except Exception:
+        return fallback
 
     s = txt.find("{")
     e = txt.rfind("}")
     if s == -1 or e == -1:
-        return {int(k): f"cluster_{k}" for k in markers.keys()}
+        return fallback
     try:
         obj = json.loads(txt[s : e + 1])
         labels = obj.get("labels", {}) if isinstance(obj, dict) else {}
@@ -209,4 +213,4 @@ def annotate_clusters_with_llm(markers: Dict[int, List[str]]) -> Dict[int, str]:
             out[int(k)] = str(labels.get(str(k), f"cluster_{k}"))
         return out
     except Exception:
-        return {int(k): f"cluster_{k}" for k in markers.keys()}
+        return fallback
