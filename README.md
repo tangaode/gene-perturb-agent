@@ -5,7 +5,7 @@ Local-first virtual gene perturbation agent for 10x single-cell MTX datasets.
 ## Requirements
 - Windows 10/11
 - Python 3.10+
-- Internet access to the relay endpoint for LLM calls
+- Internet access to the selected LLM provider endpoint
 
 ## Quick Start (PowerShell)
 ```powershell
@@ -41,14 +41,14 @@ Generated files:
 - `cluster_markers_top50.json`: Top-50 marker genes per cluster.
 - `cluster_markers_top50.csv`: marker table with `cluster`, `rank`, `gene`, `log2fc`, `mean_in`, and `mean_out`.
 
-## Relay Configuration
-Default `.env.local` values:
-```env
-LLM_BACKEND=relay
-LLM_BASE_URL=http://123.207.10.233:8010/v1
-LLM_MODEL=deepseek-chat
-LLM_API_KEY=
-```
+## LLM Provider Configuration
+`start_easy.ps1` prompts for provider selection on each launch:
+- `deepseek`: asks for base URL, model, and API key.
+- `openai`: asks for base URL, model, and API key.
+- `other`: asks for OpenAI-compatible base URL (`.../v1`), model, and API key.
+- `ollama`: asks for Ollama base URL and model.
+
+For `deepseek/openai/other`, an API key is required.
 
 ## Prediction Output
 Default final output is Top-5 upregulated and Top-5 downregulated genes (`FINAL_TOPK=5`).
