@@ -136,8 +136,9 @@ def _is_valid_marker_gene(gene: str) -> bool:
 
 def compute_top_markers(
     adata: ad.AnnData,
-    top_n: int = 100,
-    llm_top_n: int = 50,
+    llm_top_n: int = 100,
+    sig_p_cutoff: float = 0.05,
+    sig_logfc_cutoff: float = 0.5,
 ) -> Tuple[Dict[int, List[str]], pd.DataFrame]:
     sc.tl.rank_genes_groups(
         adata,
@@ -162,6 +163,8 @@ def compute_top_markers(
             df = df.rename(columns={"names": "gene"})
         if "pvals_adj" not in df.columns:
             df["pvals_adj"] = np.nan
+        if "pvals" not in df.columns:
+            df["pvals"] = np.nan
 
         df["gene"] = df["gene"].astype(str)
         df["valid_gene"] = df["gene"].map(_is_valid_marker_gene)
@@ -169,16 +172,21 @@ def compute_top_markers(
         if df_valid.empty:
             df_valid = df.copy()
 
-        df_top = df_valid.head(top_n).copy()
-        df_top["cluster"] = int(c)
-        df_top["rank"] = np.arange(1, len(df_top) + 1)
-        rows.append(
-            df_top[["cluster", "rank", "gene", "logfoldchanges", "pvals", "pvals_adj"]]
-            .rename(columns={"logfoldchanges": "log2fc"})
-            .reset_index(drop=True)
-        )
+        p_for_filter = df_valid["pvals_adj"].fillna(df_valid["pvals"])
+        sig = df_valid[(p_for_filter < sig_p_cutoff) & (df_valid["logfoldchanges"] > sig_logfc_cutoff)].copy()
+        sig = sig.sort_values(["pvals_adj", "pvals", "logfoldchanges"], ascending=[True, True, False])
 
-        markers_for_llm[int(c)] = df_valid["gene"].head(llm_top_n).tolist()
+        if not sig.empty:
+            sig["cluster"] = int(c)
+            sig["rank"] = np.arange(1, len(sig) + 1)
+            rows.append(
+                sig[["cluster", "rank", "gene", "logfoldchanges", "pvals", "pvals_adj"]]
+                .rename(columns={"logfoldchanges": "log2fc"})
+                .reset_index(drop=True)
+            )
+
+        llm_source = sig if not sig.empty else df_valid
+        markers_for_llm[int(c)] = llm_source["gene"].head(llm_top_n).tolist()
 
     marker_table = pd.concat(rows, axis=0, ignore_index=True) if rows else pd.DataFrame(
         columns=["cluster", "rank", "gene", "log2fc", "pvals", "pvals_adj"]
@@ -233,9 +241,11 @@ def save_outputs(
 
     qc_summary.to_csv(outp / "qc_summary.csv", index=False)
 
-    with open(outp / "cluster_markers_top50.json", "w", encoding="utf-8") as f:
+    with open(outp / "cluster_markers_top100_for_llm.json", "w", encoding="utf-8") as f:
         json.dump({str(k): v for k, v in markers.items()}, f, ensure_ascii=False, indent=2)
-    marker_table.to_csv(outp / "cluster_markers_top100_by_pvalue.csv", index=False)
+    with open(outp / "cluster_markers_top50.json", "w", encoding="utf-8") as f:
+        json.dump({str(k): v[:50] for k, v in markers.items()}, f, ensure_ascii=False, indent=2)
+    marker_table.to_csv(outp / "cluster_markers_significant.csv", index=False)
 
     try:
         import matplotlib.pyplot as plt

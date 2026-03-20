@@ -16,7 +16,6 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mtx-dir", required=True)
     ap.add_argument("--out-dir", required=True)
-    ap.add_argument("--top-markers", type=int, default=100)
     ap.add_argument("--n-top-genes", type=int, default=2000)
     ap.add_argument("--resolution", type=float, default=0.5)
     ap.add_argument("--annotate", action="store_true")
@@ -30,7 +29,12 @@ def main():
         n_top_genes=args.n_top_genes,
         resolution=args.resolution,
     )
-    markers, marker_table = compute_top_markers(adata, top_n=args.top_markers, llm_top_n=50)
+    markers, marker_table = compute_top_markers(
+        adata,
+        llm_top_n=100,
+        sig_p_cutoff=0.05,
+        sig_logfc_cutoff=0.5,
+    )
     um = run_umap(adata)
 
     if args.annotate:
@@ -58,7 +62,7 @@ def main():
             for c in uniq
         ],
         "annotation_file": str((Path(args.out_dir) / "cluster_annotations.csv").resolve()),
-        "marker_table_file": str((Path(args.out_dir) / "cluster_markers_top100_by_pvalue.csv").resolve()),
+        "marker_table_file": str((Path(args.out_dir) / "cluster_markers_significant.csv").resolve()),
         "qc_summary_file": str((Path(args.out_dir) / "qc_summary.csv").resolve()),
     }
     print(json.dumps(summary, ensure_ascii=False))

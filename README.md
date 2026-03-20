@@ -29,7 +29,7 @@ When clustering mode is enabled, the launcher performs:
 4. PCA.
 5. Harmony integration by `sample` when multiple samples are present.
 6. Neighbors, UMAP, and Leiden clustering (`flavor=igraph`, `n_iterations=2`, `resolution=0.5`).
-7. Marker ranking per cluster by adjusted p-value (`wilcoxon`).
+7. Marker ranking per cluster by adjusted p-value (`wilcoxon`), with significant marker filter `p < 0.05` and `log2FC > 0.5`.
 8. LLM-based cluster label suggestion.
 9. Optional manual label override in PowerShell.
 10. Target group selection by `cluster:<id>` or `cell_type:<name>`.
@@ -44,8 +44,11 @@ Generated files:
 - `umap_clusters_annotated.png`: UMAP colored by final cell-type labels.
 - `umap_clusters.png`: alias of the annotated UMAP for backward compatibility.
 - `qc_summary.csv`: QC thresholds and retained cell/gene counts.
-- `cluster_markers_top50.json`: Top-50 marker genes per cluster.
-- `cluster_markers_top100_by_pvalue.csv`: Top-100 marker genes per cluster sorted by p-value.
+- `cluster_markers_top100_for_llm.json`: top-100 marker list per cluster used for LLM annotation.
+- `cluster_markers_top50.json`: preview marker list per cluster.
+- `cluster_markers_significant.csv`: all significant high-expression markers per cluster (`p < 0.05` and `log2FC > 0.5`).
+
+LLM cell-type annotation uses the top 100 genes per cluster from the significant marker ranking.
 
 ## LLM Provider Configuration
 `start_easy.ps1` prompts for provider selection on each launch:

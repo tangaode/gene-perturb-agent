@@ -179,12 +179,11 @@ if ($envMap["VC_ENABLE_CLUSTERING"] -eq "1") {
   }
 
   if ($mtxChanged -or -not (Test-Path $meta)) {
-    Write-Host "Preparing cell clustering (QC -> normalize/log1p -> HVG -> PCA -> Harmony -> neighbors/UMAP/Leiden)..."
+    Write-Host "Preparing cell clustering (QC -> normalize/log1p -> HVG -> PCA -> Harmony -> neighbors/UMAP/Leiden) and significant markers..."
     $args = @(
       (Join-Path $repo "scripts\\prepare_cell_groups.py"),
       "--mtx-dir", $envMap["MTX_DIR"],
       "--out-dir", $clusterOut,
-      "--top-markers", "100",
       "--resolution", "0.5"
     )
     if ($envMap["VC_CLUSTER_ANNOTATE"] -eq "1") {
