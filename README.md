@@ -23,11 +23,16 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 ## Clustering and Cell-Group Selection
 When clustering mode is enabled, the launcher performs:
-1. Cell clustering and UMAP projection.
-2. Top-50 marker extraction per cluster.
-3. LLM-based cluster label suggestion.
-4. Optional manual label override in PowerShell.
-5. Target group selection by `cluster:<id>` or `cell_type:<name>`.
+1. Cell QC filtering (`n_genes_by_counts`, `total_counts`, mitochondrial ratio, ribosomal ratio).
+2. Library-size normalization (`target_sum=1e4`) and `log1p`.
+3. Highly variable gene selection and scaling.
+4. PCA.
+5. Harmony integration by `sample` when multiple samples are present.
+6. Neighbors, UMAP, and Leiden clustering (`flavor=igraph`, `n_iterations=2`, `resolution=0.5`).
+7. Marker ranking per cluster by adjusted p-value (`wilcoxon`).
+8. LLM-based cluster label suggestion.
+9. Optional manual label override in PowerShell.
+10. Target group selection by `cluster:<id>` or `cell_type:<name>`.
 
 ## Clustering Outputs
 Default output directory: `outputs/cellgroups/`
@@ -38,8 +43,9 @@ Generated files:
 - `umap_clusters_unannotated.png`: UMAP colored by raw cluster IDs.
 - `umap_clusters_annotated.png`: UMAP colored by final cell-type labels.
 - `umap_clusters.png`: alias of the annotated UMAP for backward compatibility.
+- `qc_summary.csv`: QC thresholds and retained cell/gene counts.
 - `cluster_markers_top50.json`: Top-50 marker genes per cluster.
-- `cluster_markers_top50.csv`: marker table with `cluster`, `rank`, `gene`, `log2fc`, `mean_in`, and `mean_out`.
+- `cluster_markers_top100_by_pvalue.csv`: Top-100 marker genes per cluster sorted by p-value.
 
 ## LLM Provider Configuration
 `start_easy.ps1` prompts for provider selection on each launch:

@@ -1,7 +1,9 @@
-﻿param(
+param(
   [string]$MtxDir = "",
   [string]$ApiKey = "",
-  [string]$Backend = ""
+  [string]$Backend = "",
+  [string]$BaseUrl = "",
+  [string]$Model = ""
 )
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -23,28 +25,39 @@ if ([string]::IsNullOrWhiteSpace($Backend)) {
   if ($map.ContainsKey("LLM_BACKEND") -and -not [string]::IsNullOrWhiteSpace($map["LLM_BACKEND"])) {
     $Backend = $map["LLM_BACKEND"]
   } else {
-    $Backend = "relay"
+    $Backend = "deepseek"
   }
+}
+$Backend = $Backend.ToLower()
+if (@("deepseek","openai","gemini") -notcontains $Backend) {
+  throw "Backend must be one of: deepseek, openai, gemini"
 }
 
 if ([string]::IsNullOrWhiteSpace($MtxDir)) {
   $MtxDir = Read-Host "10x MTX folder path"
 }
 
-if ([string]::IsNullOrWhiteSpace($ApiKey) -and ($Backend -eq "deepseek" -or $Backend -eq "openai")) {
-  $ApiKey = Read-Host "DeepSeek API key (sk-...)"
+if ([string]::IsNullOrWhiteSpace($ApiKey)) {
+  $ApiKey = Read-Host "API key"
+}
+
+if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
+  if ($Backend -eq "deepseek") { $BaseUrl = "https://api.deepseek.com/v1" }
+  elseif ($Backend -eq "openai") { $BaseUrl = "https://api.openai.com/v1" }
+  else { $BaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai" }
+}
+
+if ([string]::IsNullOrWhiteSpace($Model)) {
+  if ($Backend -eq "deepseek") { $Model = "deepseek-chat" }
+  elseif ($Backend -eq "openai") { $Model = "gpt-4o-mini" }
+  else { $Model = "gemini-2.0-flash" }
 }
 
 $map["LLM_BACKEND"] = $Backend
+$map["LLM_BASE_URL"] = $BaseUrl
+$map["LLM_MODEL"] = $Model
 $map["MTX_DIR"] = $MtxDir
-if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
-  $map["LLM_API_KEY"] = $ApiKey
-}
-if ($Backend -eq "relay") {
-  if (-not $map.ContainsKey("LLM_BASE_URL") -or [string]::IsNullOrWhiteSpace($map["LLM_BASE_URL"]) -or $map["LLM_BASE_URL"] -match "your-relay-domain") {
-    $map["LLM_BASE_URL"] = "http://123.207.10.233:8010/v1"
-  }
-}
+$map["LLM_API_KEY"] = $ApiKey
 
 $lines = @()
 foreach ($k in ($map.Keys | Sort-Object)) {

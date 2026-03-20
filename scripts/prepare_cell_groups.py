@@ -16,23 +16,29 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mtx-dir", required=True)
     ap.add_argument("--out-dir", required=True)
-    ap.add_argument("--top-markers", type=int, default=50)
-    ap.add_argument("--n-clusters", type=int, default=8)
+    ap.add_argument("--top-markers", type=int, default=100)
     ap.add_argument("--n-top-genes", type=int, default=2000)
+    ap.add_argument("--resolution", type=float, default=0.5)
     ap.add_argument("--annotate", action="store_true")
     args = ap.parse_args()
 
     X, genes, barcodes = read_10x_mtx(args.mtx_dir)
-    labels, pcs, Xn = cluster_cells(X, genes, barcodes, n_clusters=args.n_clusters, n_top_genes=args.n_top_genes)
-    markers, marker_table = compute_top_markers(Xn, genes, labels, top_n=args.top_markers)
-    um = run_umap(pcs)
+    labels, pcs, Xn, adata, qc_summary = cluster_cells(
+        X,
+        genes,
+        barcodes,
+        n_top_genes=args.n_top_genes,
+        resolution=args.resolution,
+    )
+    markers, marker_table = compute_top_markers(adata, top_n=args.top_markers, llm_top_n=50)
+    um = run_umap(adata)
 
     if args.annotate:
         cell_map = annotate_clusters_with_llm(markers)
     else:
         cell_map = {int(k): f"cluster_{k}" for k in markers.keys()}
 
-    save_outputs(args.out_dir, barcodes, labels, um, markers, marker_table, cell_map)
+    save_outputs(args.out_dir, adata, labels, um, markers, marker_table, cell_map, qc_summary)
 
     # print compact summary for launcher parsing
     uniq = sorted(list(set(labels.tolist())))
@@ -52,7 +58,8 @@ def main():
             for c in uniq
         ],
         "annotation_file": str((Path(args.out_dir) / "cluster_annotations.csv").resolve()),
-        "marker_table_file": str((Path(args.out_dir) / "cluster_markers_top50.csv").resolve()),
+        "marker_table_file": str((Path(args.out_dir) / "cluster_markers_top100_by_pvalue.csv").resolve()),
+        "qc_summary_file": str((Path(args.out_dir) / "qc_summary.csv").resolve()),
     }
     print(json.dumps(summary, ensure_ascii=False))
 

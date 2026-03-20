@@ -93,7 +93,6 @@ if (-not $envMap.ContainsKey("FINAL_TOPK")) { $envMap["FINAL_TOPK"] = "5" }
 if (-not $envMap.ContainsKey("EVIDENCE_TIMEOUT")) { $envMap["EVIDENCE_TIMEOUT"] = "600" }
 if (-not $envMap.ContainsKey("VC_ENABLE_CLUSTERING")) { $envMap["VC_ENABLE_CLUSTERING"] = "0" }
 if (-not $envMap.ContainsKey("VC_CLUSTER_ANNOTATE")) { $envMap["VC_CLUSTER_ANNOTATE"] = "1" }
-if (-not $envMap.ContainsKey("VC_N_CLUSTERS")) { $envMap["VC_N_CLUSTERS"] = "8" }
 if (-not $envMap.ContainsKey("VC_CLUSTER_OUT")) { $envMap["VC_CLUSTER_OUT"] = (Join-Path $repo "outputs\\cellgroups") }
 if (-not $envMap.ContainsKey("VC_CLUSTER_META")) { $envMap["VC_CLUSTER_META"] = (Join-Path $envMap["VC_CLUSTER_OUT"] "cluster_annotations.csv") }
 if (-not $envMap.ContainsKey("NO_PROXY")) { $envMap["NO_PROXY"] = "localhost,127.0.0.1" }
@@ -180,13 +179,13 @@ if ($envMap["VC_ENABLE_CLUSTERING"] -eq "1") {
   }
 
   if ($mtxChanged -or -not (Test-Path $meta)) {
-    Write-Host "Preparing cell clustering + UMAP + marker top50..."
+    Write-Host "Preparing cell clustering (QC -> normalize/log1p -> HVG -> PCA -> Harmony -> neighbors/UMAP/Leiden)..."
     $args = @(
       (Join-Path $repo "scripts\\prepare_cell_groups.py"),
       "--mtx-dir", $envMap["MTX_DIR"],
       "--out-dir", $clusterOut,
-      "--top-markers", "50",
-      "--n-clusters", $envMap["VC_N_CLUSTERS"]
+      "--top-markers", "100",
+      "--resolution", "0.5"
     )
     if ($envMap["VC_CLUSTER_ANNOTATE"] -eq "1") {
       $args += "--annotate"
