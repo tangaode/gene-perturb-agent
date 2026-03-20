@@ -101,9 +101,9 @@ if (-not $envMap.ContainsKey("NO_PROXY")) { $envMap["NO_PROXY"] = "localhost,127
 # LLM provider selection on each launch (3 providers only).
 $prevProvider = "$($envMap["LLM_BACKEND"])".ToLower()
 if ([string]::IsNullOrWhiteSpace($prevProvider)) { $prevProvider = "deepseek" }
-$allowedProviders = @("deepseek", "openai", "qwen")
+$allowedProviders = @("deepseek", "openai", "gemini")
 if ($allowedProviders -notcontains $prevProvider) { $prevProvider = "deepseek" }
-$provider = (Read-Host "LLM provider (deepseek/openai/qwen) [default: $prevProvider]").Trim().ToLower()
+$provider = (Read-Host "LLM provider (deepseek/openai/gemini) [default: $prevProvider]").Trim().ToLower()
 if ([string]::IsNullOrWhiteSpace($provider)) { $provider = $prevProvider }
 
 if ($provider -eq "deepseek") {
@@ -128,22 +128,22 @@ elseif ($provider -eq "openai") {
   $keyIn = Read-Host "OpenAI API key [press Enter to keep current]"
   if (-not [string]::IsNullOrWhiteSpace($keyIn)) { $envMap["LLM_API_KEY"] = $keyIn }
 }
-elseif ($provider -eq "qwen") {
-  $envMap["LLM_BACKEND"] = "qwen"
-  $baseDefault = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-  $baseIn = Read-Host "Qwen base URL [default: $baseDefault]"
+elseif ($provider -eq "gemini") {
+  $envMap["LLM_BACKEND"] = "gemini"
+  $baseDefault = "https://generativelanguage.googleapis.com/v1beta/openai"
+  $baseIn = Read-Host "Gemini base URL [default: $baseDefault]"
   $envMap["LLM_BASE_URL"] = if ([string]::IsNullOrWhiteSpace($baseIn)) { $baseDefault } else { $baseIn }
-  $modelDefault = if ([string]::IsNullOrWhiteSpace($envMap["LLM_MODEL"])) { "qwen-plus" } else { $envMap["LLM_MODEL"] }
-  $modelIn = Read-Host "Qwen model [default: $modelDefault]"
+  $modelDefault = if ([string]::IsNullOrWhiteSpace($envMap["LLM_MODEL"])) { "gemini-2.0-flash" } else { $envMap["LLM_MODEL"] }
+  $modelIn = Read-Host "Gemini model [default: $modelDefault]"
   $envMap["LLM_MODEL"] = if ([string]::IsNullOrWhiteSpace($modelIn)) { $modelDefault } else { $modelIn }
-  $keyIn = Read-Host "Qwen API key [press Enter to keep current]"
+  $keyIn = Read-Host "Gemini API key [press Enter to keep current]"
   if (-not [string]::IsNullOrWhiteSpace($keyIn)) { $envMap["LLM_API_KEY"] = $keyIn }
 }
 else {
-  throw "Unsupported provider: $provider. Use deepseek/openai/qwen."
+  throw "Unsupported provider: $provider. Use deepseek/openai/gemini."
 }
 
-if (($envMap["LLM_BACKEND"] -eq "deepseek" -or $envMap["LLM_BACKEND"] -eq "openai" -or $envMap["LLM_BACKEND"] -eq "qwen") -and `
+if (($envMap["LLM_BACKEND"] -eq "deepseek" -or $envMap["LLM_BACKEND"] -eq "openai" -or $envMap["LLM_BACKEND"] -eq "gemini") -and `
     (-not $envMap.ContainsKey("LLM_API_KEY") -or [string]::IsNullOrWhiteSpace($envMap["LLM_API_KEY"]))) {
   throw "LLM_API_KEY is required for provider $($envMap["LLM_BACKEND"])."
 }

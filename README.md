@@ -45,14 +45,14 @@ Generated files:
 `start_easy.ps1` prompts for provider selection on each launch:
 - `deepseek`: asks for base URL, model, and API key.
 - `openai`: asks for base URL, model, and API key.
-- `qwen`: asks for base URL, model, and API key (OpenAI-compatible endpoint).
+- `gemini`: asks for base URL, model, and API key (OpenAI-compatible endpoint).
 
-For `deepseek/openai/qwen`, an API key is required.
+For `deepseek/openai/gemini`, an API key is required.
 
 Typical base URLs:
 - DeepSeek: `https://api.deepseek.com/v1`
 - OpenAI: `https://api.openai.com/v1`
-- Qwen (DashScope compatible mode): `https://dashscope.aliyuncs.com/compatible-mode/v1`
+- Gemini (OpenAI-compatible): `https://generativelanguage.googleapis.com/v1beta/openai`
 
 ## Prediction Output
 Default final output is Top-5 upregulated and Top-5 downregulated genes (`FINAL_TOPK=5`).
