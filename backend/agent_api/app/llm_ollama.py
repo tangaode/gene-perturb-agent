@@ -39,8 +39,8 @@ def chat(messages, options=None):
         data = resp.json()
         return data.get("message", {}).get("content", "")
 
-    if not OPENAI_KEY and BACKEND in ("deepseek", "openai"):
-        raise ValueError("LLM_API_KEY is required when LLM_BACKEND is deepseek/openai")
+    if not OPENAI_KEY and BACKEND in ("deepseek", "openai", "qwen"):
+        raise ValueError("LLM_API_KEY is required when LLM_BACKEND is deepseek/openai/qwen")
 
     payload = {
         "model": OPENAI_MODEL,

@@ -98,12 +98,12 @@ if (-not $envMap.ContainsKey("VC_CLUSTER_OUT")) { $envMap["VC_CLUSTER_OUT"] = (J
 if (-not $envMap.ContainsKey("VC_CLUSTER_META")) { $envMap["VC_CLUSTER_META"] = (Join-Path $envMap["VC_CLUSTER_OUT"] "cluster_annotations.csv") }
 if (-not $envMap.ContainsKey("NO_PROXY")) { $envMap["NO_PROXY"] = "localhost,127.0.0.1" }
 
-# LLM provider selection on each launch.
+# LLM provider selection on each launch (3 providers only).
 $prevProvider = "$($envMap["LLM_BACKEND"])".ToLower()
 if ([string]::IsNullOrWhiteSpace($prevProvider)) { $prevProvider = "deepseek" }
-$allowedProviders = @("deepseek", "openai", "other", "ollama")
+$allowedProviders = @("deepseek", "openai", "qwen")
 if ($allowedProviders -notcontains $prevProvider) { $prevProvider = "deepseek" }
-$provider = (Read-Host "LLM provider (deepseek/openai/other/ollama) [default: $prevProvider]").Trim().ToLower()
+$provider = (Read-Host "LLM provider (deepseek/openai/qwen) [default: $prevProvider]").Trim().ToLower()
 if ([string]::IsNullOrWhiteSpace($provider)) { $provider = $prevProvider }
 
 if ($provider -eq "deepseek") {
@@ -128,32 +128,22 @@ elseif ($provider -eq "openai") {
   $keyIn = Read-Host "OpenAI API key [press Enter to keep current]"
   if (-not [string]::IsNullOrWhiteSpace($keyIn)) { $envMap["LLM_API_KEY"] = $keyIn }
 }
-elseif ($provider -eq "other") {
-  # OpenAI-compatible third-party endpoint.
-  $envMap["LLM_BACKEND"] = "openai"
-  $baseDefault = if ([string]::IsNullOrWhiteSpace($envMap["LLM_BASE_URL"])) { "https://api.example.com/v1" } else { $envMap["LLM_BASE_URL"] }
-  $baseIn = Read-Host "Custom OpenAI-compatible base URL (must end with /v1) [default: $baseDefault]"
+elseif ($provider -eq "qwen") {
+  $envMap["LLM_BACKEND"] = "qwen"
+  $baseDefault = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  $baseIn = Read-Host "Qwen base URL [default: $baseDefault]"
   $envMap["LLM_BASE_URL"] = if ([string]::IsNullOrWhiteSpace($baseIn)) { $baseDefault } else { $baseIn }
-  $modelDefault = if ([string]::IsNullOrWhiteSpace($envMap["LLM_MODEL"])) { "chat-model" } else { $envMap["LLM_MODEL"] }
-  $modelIn = Read-Host "Custom model name [default: $modelDefault]"
+  $modelDefault = if ([string]::IsNullOrWhiteSpace($envMap["LLM_MODEL"])) { "qwen-plus" } else { $envMap["LLM_MODEL"] }
+  $modelIn = Read-Host "Qwen model [default: $modelDefault]"
   $envMap["LLM_MODEL"] = if ([string]::IsNullOrWhiteSpace($modelIn)) { $modelDefault } else { $modelIn }
-  $keyIn = Read-Host "Custom provider API key [press Enter to keep current]"
+  $keyIn = Read-Host "Qwen API key [press Enter to keep current]"
   if (-not [string]::IsNullOrWhiteSpace($keyIn)) { $envMap["LLM_API_KEY"] = $keyIn }
 }
-elseif ($provider -eq "ollama") {
-  $envMap["LLM_BACKEND"] = "ollama"
-  $baseDefault = if ($envMap.ContainsKey("OLLAMA_BASE_URL") -and -not [string]::IsNullOrWhiteSpace($envMap["OLLAMA_BASE_URL"])) { $envMap["OLLAMA_BASE_URL"] } else { "http://localhost:11434" }
-  $baseIn = Read-Host "Ollama base URL [default: $baseDefault]"
-  $envMap["OLLAMA_BASE_URL"] = if ([string]::IsNullOrWhiteSpace($baseIn)) { $baseDefault } else { $baseIn }
-  $modelDefault = if ($envMap.ContainsKey("OLLAMA_MODEL") -and -not [string]::IsNullOrWhiteSpace($envMap["OLLAMA_MODEL"])) { $envMap["OLLAMA_MODEL"] } else { "deepseek-r1" }
-  $modelIn = Read-Host "Ollama model [default: $modelDefault]"
-  $envMap["OLLAMA_MODEL"] = if ([string]::IsNullOrWhiteSpace($modelIn)) { $modelDefault } else { $modelIn }
-}
 else {
-  throw "Unsupported provider: $provider. Use deepseek/openai/other/ollama."
+  throw "Unsupported provider: $provider. Use deepseek/openai/qwen."
 }
 
-if (($envMap["LLM_BACKEND"] -eq "deepseek" -or $envMap["LLM_BACKEND"] -eq "openai") -and `
+if (($envMap["LLM_BACKEND"] -eq "deepseek" -or $envMap["LLM_BACKEND"] -eq "openai" -or $envMap["LLM_BACKEND"] -eq "qwen") -and `
     (-not $envMap.ContainsKey("LLM_API_KEY") -or [string]::IsNullOrWhiteSpace($envMap["LLM_API_KEY"]))) {
   throw "LLM_API_KEY is required for provider $($envMap["LLM_BACKEND"])."
 }
