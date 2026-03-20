@@ -65,9 +65,13 @@ Package:
 End-user flow:
 1. Unzip `GenePerturbAgent.zip`.
 2. Run `Run-Agent.bat`.
-3. Enter `MTX_DIR`.
+3. Select `MTX_DIR` at startup (press Enter to reuse last path).
 4. Optionally run clustering and select a cell group.
 5. Open `http://localhost:3000`.
+
+Notes:
+- `start_easy.ps1` prompts for the dataset path on every startup.
+- If `MTX_DIR` changes, clustering outputs are regenerated for the new dataset and cell-group selection is requested again.
 
 ## Local Services / Ports
 - `agent_api`: `8000`

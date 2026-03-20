@@ -62,12 +62,19 @@ if (-not [string]::IsNullOrWhiteSpace($MtxDir)) {
   $envMap["MTX_DIR"] = $MtxDir
 }
 
+$curMtx = ""
+if ($envMap.ContainsKey("MTX_DIR")) { $curMtx = "$($envMap["MTX_DIR"])" }
+$mtxPromptDefault = if ([string]::IsNullOrWhiteSpace($curMtx)) { "none" } else { $curMtx }
+$inputMtx = Read-Host "MTX folder (single sample or parent folder with multiple samples) [default: $mtxPromptDefault]"
+if (-not [string]::IsNullOrWhiteSpace($inputMtx)) {
+  $envMap["MTX_DIR"] = $inputMtx
+}
 while (-not (Test-MtxDir $envMap["MTX_DIR"])) {
   if ($envMap.ContainsKey("MTX_DIR") -and -not [string]::IsNullOrWhiteSpace($envMap["MTX_DIR"])) {
     Write-Host "Invalid MTX_DIR: $($envMap["MTX_DIR"])" -ForegroundColor Yellow
-    Write-Host "Required files: matrix.mtx(.gz), features/genes.tsv(.gz), barcodes.tsv(.gz)" -ForegroundColor Yellow
+    Write-Host "Required files: matrix.mtx(.gz), features/genes.tsv(.gz), barcodes.tsv(.gz), or a parent folder containing such sample folders." -ForegroundColor Yellow
   }
-  $envMap["MTX_DIR"] = Read-Host "Enter local 10x MTX folder (example: D:/scRNA/GSM7831813)"
+  $envMap["MTX_DIR"] = Read-Host "Enter local 10x MTX folder"
 }
 
 # Defaults for easy mode
@@ -127,7 +134,15 @@ if ($envMap["VC_ENABLE_CLUSTERING"] -eq "1") {
   $clusterOut = $envMap["VC_CLUSTER_OUT"]
   if (-not (Test-Path $clusterOut)) { New-Item -ItemType Directory -Force -Path $clusterOut | Out-Null }
   $meta = $envMap["VC_CLUSTER_META"]
-  if (-not (Test-Path $meta)) {
+  $lastMtx = ""
+  if ($envMap.ContainsKey("VC_CLUSTER_SOURCE_MTX_DIR")) { $lastMtx = "$($envMap["VC_CLUSTER_SOURCE_MTX_DIR"])" }
+  $currentMtx = "$($envMap["MTX_DIR"])"
+  $mtxChanged = ($lastMtx -ne $currentMtx)
+  if ($mtxChanged) {
+    $envMap["VC_CELL_GROUP"] = ""
+  }
+
+  if ($mtxChanged -or -not (Test-Path $meta)) {
     Write-Host "Preparing cell clustering + UMAP + marker top50..."
     $args = @(
       (Join-Path $repo "scripts\\prepare_cell_groups.py"),
@@ -152,6 +167,7 @@ if ($envMap["VC_ENABLE_CLUSTERING"] -eq "1") {
       } catch {}
     }
     $envMap["VC_CLUSTER_META"] = (Join-Path $clusterOut "cluster_annotations.csv")
+    $envMap["VC_CLUSTER_SOURCE_MTX_DIR"] = $currentMtx
     Save-EnvMap $envFile $envMap
   }
 
