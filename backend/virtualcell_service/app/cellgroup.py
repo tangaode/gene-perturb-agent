@@ -144,7 +144,7 @@ def compute_top_markers(
         adata,
         groupby="cluster",
         method="wilcoxon",
-        n_genes=min(max(top_n * 5, llm_top_n * 5), adata.n_vars),
+        n_genes=min(max(500, llm_top_n * 5), adata.n_vars),
         pts=True,
     )
 
