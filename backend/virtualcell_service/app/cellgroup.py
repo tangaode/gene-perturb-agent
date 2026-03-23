@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -218,6 +219,16 @@ def save_outputs(
     outp = Path(out_dir)
     outp.mkdir(parents=True, exist_ok=True)
 
+    def _safe_to_csv(df: pd.DataFrame, path: Path):
+        try:
+            df.to_csv(path, index=False)
+            return str(path)
+        except PermissionError:
+            alt = path.with_name(f"{path.stem}_{datetime.now().strftime('%Y%m%d_%H%M%S')}{path.suffix}")
+            df.to_csv(alt, index=False)
+            print(f"[WARN] File locked: {path}. Wrote to: {alt}")
+            return str(alt)
+
     ann = pd.DataFrame(
         {
             "barcode": adata.obs["barcode"].astype(str).tolist(),
@@ -230,7 +241,7 @@ def save_outputs(
             "pct_counts_ribo": adata.obs["pct_counts_ribo"].astype(float).tolist(),
         }
     )
-    ann.to_csv(outp / "cluster_annotations.csv", index=False)
+    _safe_to_csv(ann, outp / "cluster_annotations.csv")
 
     um = pd.DataFrame(
         {
@@ -242,15 +253,15 @@ def save_outputs(
             "cell_type": [cell_type_map.get(int(c), f"cluster_{int(c)}") for c in labels],
         }
     )
-    um.to_csv(outp / "umap_coords.csv", index=False)
+    _safe_to_csv(um, outp / "umap_coords.csv")
 
-    qc_summary.to_csv(outp / "qc_summary.csv", index=False)
+    _safe_to_csv(qc_summary, outp / "qc_summary.csv")
 
     with open(outp / "cluster_markers_top100_for_llm.json", "w", encoding="utf-8") as f:
         json.dump({str(k): v for k, v in markers.items()}, f, ensure_ascii=False, indent=2)
     with open(outp / "cluster_markers_top50.json", "w", encoding="utf-8") as f:
         json.dump({str(k): v[:50] for k, v in markers.items()}, f, ensure_ascii=False, indent=2)
-    marker_table.to_csv(outp / "cluster_markers_significant.csv", index=False)
+    _safe_to_csv(marker_table, outp / "cluster_markers_significant.csv")
 
     try:
         import matplotlib.pyplot as plt
