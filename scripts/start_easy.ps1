@@ -26,14 +26,6 @@ function Get-EnvMap([string]$path) {
   return $map
 }
 
-function Save-EnvMap([string]$path, $map) {
-  $lines = @()
-  foreach ($k in ($map.Keys | Sort-Object)) {
-    $lines += "$k=$($map[$k])"
-  }
-  Set-Content -Encoding UTF8 -Path $path -Value $lines
-}
-
 function Test-MtxDir([string]$dirPath) {
   if ([string]::IsNullOrWhiteSpace($dirPath)) { return $false }
   if (-not (Test-Path $dirPath -PathType Container)) { return $false }
@@ -62,13 +54,8 @@ if (-not [string]::IsNullOrWhiteSpace($MtxDir)) {
   $envMap["MTX_DIR"] = $MtxDir
 }
 
-$curMtx = ""
-if ($envMap.ContainsKey("MTX_DIR")) { $curMtx = "$($envMap["MTX_DIR"])" }
-$mtxPromptDefault = if ([string]::IsNullOrWhiteSpace($curMtx)) { "none" } else { $curMtx }
-$inputMtx = Read-Host "MTX folder (single sample or parent folder with multiple samples) [default: $mtxPromptDefault]"
-if (-not [string]::IsNullOrWhiteSpace($inputMtx)) {
-  $envMap["MTX_DIR"] = $inputMtx
-}
+$inputMtx = Read-Host "MTX folder (single sample or parent folder with multiple samples)"
+if (-not [string]::IsNullOrWhiteSpace($inputMtx)) { $envMap["MTX_DIR"] = $inputMtx }
 while (-not (Test-MtxDir $envMap["MTX_DIR"])) {
   if ($envMap.ContainsKey("MTX_DIR") -and -not [string]::IsNullOrWhiteSpace($envMap["MTX_DIR"])) {
     Write-Host "Invalid MTX_DIR: $($envMap["MTX_DIR"])" -ForegroundColor Yellow
@@ -98,45 +85,41 @@ if (-not $envMap.ContainsKey("VC_CLUSTER_META")) { $envMap["VC_CLUSTER_META"] = 
 if (-not $envMap.ContainsKey("NO_PROXY")) { $envMap["NO_PROXY"] = "localhost,127.0.0.1" }
 
 # LLM provider selection on each launch (3 providers only).
-$prevProvider = "$($envMap["LLM_BACKEND"])".ToLower()
-if ([string]::IsNullOrWhiteSpace($prevProvider)) { $prevProvider = "deepseek" }
-$allowedProviders = @("deepseek", "openai", "gemini")
-if ($allowedProviders -notcontains $prevProvider) { $prevProvider = "deepseek" }
-$provider = (Read-Host "LLM provider (deepseek/openai/gemini) [default: $prevProvider]").Trim().ToLower()
-if ([string]::IsNullOrWhiteSpace($provider)) { $provider = $prevProvider }
+$provider = (Read-Host "LLM provider (deepseek/openai/gemini) [default: deepseek]").Trim().ToLower()
+if ([string]::IsNullOrWhiteSpace($provider)) { $provider = "deepseek" }
 
 if ($provider -eq "deepseek") {
   $envMap["LLM_BACKEND"] = "deepseek"
-  $baseDefault = if ([string]::IsNullOrWhiteSpace($envMap["LLM_BASE_URL"])) { "https://api.deepseek.com/v1" } else { $envMap["LLM_BASE_URL"] }
+  $baseDefault = "https://api.deepseek.com/v1"
   $baseIn = Read-Host "DeepSeek base URL [default: $baseDefault]"
   $envMap["LLM_BASE_URL"] = if ([string]::IsNullOrWhiteSpace($baseIn)) { $baseDefault } else { $baseIn }
-  $modelDefault = if ([string]::IsNullOrWhiteSpace($envMap["LLM_MODEL"])) { "deepseek-chat" } else { $envMap["LLM_MODEL"] }
+  $modelDefault = "deepseek-chat"
   $modelIn = Read-Host "DeepSeek model [default: $modelDefault]"
   $envMap["LLM_MODEL"] = if ([string]::IsNullOrWhiteSpace($modelIn)) { $modelDefault } else { $modelIn }
-  $keyIn = Read-Host "DeepSeek API key (sk-...) [press Enter to keep current]"
-  if (-not [string]::IsNullOrWhiteSpace($keyIn)) { $envMap["LLM_API_KEY"] = $keyIn }
+  $keyIn = Read-Host "DeepSeek API key (sk-...)"
+  $envMap["LLM_API_KEY"] = $keyIn
 }
 elseif ($provider -eq "openai") {
   $envMap["LLM_BACKEND"] = "openai"
-  $baseDefault = if ([string]::IsNullOrWhiteSpace($envMap["LLM_BASE_URL"])) { "https://api.openai.com/v1" } else { $envMap["LLM_BASE_URL"] }
+  $baseDefault = "https://api.openai.com/v1"
   $baseIn = Read-Host "OpenAI base URL [default: $baseDefault]"
   $envMap["LLM_BASE_URL"] = if ([string]::IsNullOrWhiteSpace($baseIn)) { $baseDefault } else { $baseIn }
-  $modelDefault = if ([string]::IsNullOrWhiteSpace($envMap["LLM_MODEL"])) { "gpt-4o-mini" } else { $envMap["LLM_MODEL"] }
+  $modelDefault = "gpt-4o-mini"
   $modelIn = Read-Host "OpenAI model [default: $modelDefault]"
   $envMap["LLM_MODEL"] = if ([string]::IsNullOrWhiteSpace($modelIn)) { $modelDefault } else { $modelIn }
-  $keyIn = Read-Host "OpenAI API key [press Enter to keep current]"
-  if (-not [string]::IsNullOrWhiteSpace($keyIn)) { $envMap["LLM_API_KEY"] = $keyIn }
+  $keyIn = Read-Host "OpenAI API key"
+  $envMap["LLM_API_KEY"] = $keyIn
 }
 elseif ($provider -eq "gemini") {
   $envMap["LLM_BACKEND"] = "gemini"
   $baseDefault = "https://generativelanguage.googleapis.com/v1beta/openai"
   $baseIn = Read-Host "Gemini base URL [default: $baseDefault]"
   $envMap["LLM_BASE_URL"] = if ([string]::IsNullOrWhiteSpace($baseIn)) { $baseDefault } else { $baseIn }
-  $modelDefault = if ([string]::IsNullOrWhiteSpace($envMap["LLM_MODEL"])) { "gemini-2.0-flash" } else { $envMap["LLM_MODEL"] }
+  $modelDefault = "gemini-2.0-flash"
   $modelIn = Read-Host "Gemini model [default: $modelDefault]"
   $envMap["LLM_MODEL"] = if ([string]::IsNullOrWhiteSpace($modelIn)) { $modelDefault } else { $modelIn }
-  $keyIn = Read-Host "Gemini API key [press Enter to keep current]"
-  if (-not [string]::IsNullOrWhiteSpace($keyIn)) { $envMap["LLM_API_KEY"] = $keyIn }
+  $keyIn = Read-Host "Gemini API key"
+  $envMap["LLM_API_KEY"] = $keyIn
 }
 else {
   throw "Unsupported provider: $provider. Use deepseek/openai/gemini."
@@ -147,13 +130,8 @@ if (($envMap["LLM_BACKEND"] -eq "deepseek" -or $envMap["LLM_BACKEND"] -eq "opena
   throw "LLM_API_KEY is required for provider $($envMap["LLM_BACKEND"])."
 }
 
-if (-not $envMap.ContainsKey("VC_CLUSTER_MODE_SELECTED")) {
-  $ans = Read-Host "Enable clustering mode before KO? (Y/N, default N)"
-  if ($ans -match '^(y|Y)') { $envMap["VC_ENABLE_CLUSTERING"] = "1" } else { $envMap["VC_ENABLE_CLUSTERING"] = "0" }
-  $envMap["VC_CLUSTER_MODE_SELECTED"] = "1"
-}
-
-Save-EnvMap $envFile $envMap
+$ans = Read-Host "Enable clustering mode before KO? (Y/N, default N)"
+if ($ans -match '^(y|Y)') { $envMap["VC_ENABLE_CLUSTERING"] = "1" } else { $envMap["VC_ENABLE_CLUSTERING"] = "0" }
 
 # Export env to current process so child processes inherit
 foreach ($k in $envMap.Keys) {
@@ -170,41 +148,31 @@ if ($envMap["VC_ENABLE_CLUSTERING"] -eq "1") {
   $clusterOut = $envMap["VC_CLUSTER_OUT"]
   if (-not (Test-Path $clusterOut)) { New-Item -ItemType Directory -Force -Path $clusterOut | Out-Null }
   $meta = $envMap["VC_CLUSTER_META"]
-  $lastMtx = ""
-  if ($envMap.ContainsKey("VC_CLUSTER_SOURCE_MTX_DIR")) { $lastMtx = "$($envMap["VC_CLUSTER_SOURCE_MTX_DIR"])" }
-  $currentMtx = "$($envMap["MTX_DIR"])"
-  $mtxChanged = ($lastMtx -ne $currentMtx)
-  if ($mtxChanged) {
-    $envMap["VC_CELL_GROUP"] = ""
-  }
+  $envMap["VC_CELL_GROUP"] = ""
 
-  if ($mtxChanged -or -not (Test-Path $meta)) {
-    Write-Host "Preparing cell clustering (QC -> normalize/log1p -> HVG -> PCA -> Harmony -> neighbors/UMAP/Leiden) and significant markers..."
-    $args = @(
-      (Join-Path $repo "scripts\\prepare_cell_groups.py"),
-      "--mtx-dir", $envMap["MTX_DIR"],
-      "--out-dir", $clusterOut,
-      "--resolution", "0.5"
-    )
-    if ($envMap["VC_CLUSTER_ANNOTATE"] -eq "1") {
-      $args += "--annotate"
-    }
-    $prepOutput = & $py $args
-    if ($LASTEXITCODE -ne 0) {
-      throw "Cell clustering preparation failed."
-    }
-    if ($prepOutput) {
-      try {
-        $summary = ($prepOutput | Select-Object -Last 1 | ConvertFrom-Json)
-        if ($summary) {
-          Write-Host "Clustering output folder: $($summary.out_dir)"
-        }
-      } catch {}
-    }
-    $envMap["VC_CLUSTER_META"] = (Join-Path $clusterOut "cluster_annotations.csv")
-    $envMap["VC_CLUSTER_SOURCE_MTX_DIR"] = $currentMtx
-    Save-EnvMap $envFile $envMap
+  Write-Host "Preparing cell clustering (QC -> normalize/log1p -> HVG -> PCA -> Harmony -> neighbors/UMAP/Leiden) and significant markers..."
+  $args = @(
+    (Join-Path $repo "scripts\\prepare_cell_groups.py"),
+    "--mtx-dir", $envMap["MTX_DIR"],
+    "--out-dir", $clusterOut,
+    "--resolution", "0.5"
+  )
+  if ($envMap["VC_CLUSTER_ANNOTATE"] -eq "1") {
+    $args += "--annotate"
   }
+  $prepOutput = & $py $args
+  if ($LASTEXITCODE -ne 0) {
+    throw "Cell clustering preparation failed."
+  }
+  if ($prepOutput) {
+    try {
+      $summary = ($prepOutput | Select-Object -Last 1 | ConvertFrom-Json)
+      if ($summary) {
+        Write-Host "Clustering output folder: $($summary.out_dir)"
+      }
+    } catch {}
+  }
+  $envMap["VC_CLUSTER_META"] = (Join-Path $clusterOut "cluster_annotations.csv")
 
   try {
     $ann = Import-Csv $envMap["VC_CLUSTER_META"]
@@ -239,17 +207,13 @@ if ($envMap["VC_ENABLE_CLUSTERING"] -eq "1") {
     }
   } catch {}
 
-  $currentGroup = ""
-  if ($envMap.ContainsKey("VC_CELL_GROUP")) { $currentGroup = "$($envMap["VC_CELL_GROUP"])" }
-  $defaultHint = if ([string]::IsNullOrWhiteSpace($currentGroup)) { "all" } else { $currentGroup }
-  $pick = Read-Host "Pick target group (cluster:<id>, cell_type:<name>, or all) [default: $defaultHint]"
-  if ([string]::IsNullOrWhiteSpace($pick)) { $pick = $defaultHint }
+  $pick = Read-Host "Pick target group (cluster:<id>, cell_type:<name>, or all) [default: all]"
+  if ([string]::IsNullOrWhiteSpace($pick)) { $pick = "all" }
   if ($pick -eq "all") {
     $envMap["VC_CELL_GROUP"] = ""
   } else {
     $envMap["VC_CELL_GROUP"] = $pick
   }
-  Save-EnvMap $envFile $envMap
 }
 
 function Start-Service($name, $workdir, $module, $port) {

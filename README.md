@@ -83,8 +83,9 @@ End-user flow:
 5. Open `http://localhost:3000`.
 
 Notes:
-- `start_easy.ps1` prompts for the dataset path on every startup.
-- If `MTX_DIR` changes, clustering outputs are regenerated for the new dataset and cell-group selection is requested again.
+- `start_easy.ps1` prompts for dataset path, provider, model, and API key on every startup.
+- Cell clustering and cell-type annotation are recomputed on every startup when clustering mode is enabled.
+- Runtime values are not persisted to `.env.local` by `start_easy.ps1`.
 
 ## Local Services / Ports
 - `agent_api`: `8000`
