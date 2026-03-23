@@ -207,12 +207,45 @@ if ($envMap["VC_ENABLE_CLUSTERING"] -eq "1") {
     }
   } catch {}
 
-  $pick = Read-Host "Pick target group (cluster:<id>, cell_type:<name>, or all) [default: all]"
-  if ([string]::IsNullOrWhiteSpace($pick)) { $pick = "all" }
-  if ($pick -eq "all") {
-    $envMap["VC_CELL_GROUP"] = ""
-  } else {
-    $envMap["VC_CELL_GROUP"] = $pick
+  if (-not $ann -or $ann.Count -eq 0) {
+    throw "No cluster annotations available. Cannot continue without a valid target group."
+  }
+
+  $validClusters = @{}
+  $validCellTypes = @{}
+  foreach ($row in $ann) {
+    $c = "$($row.cluster)".Trim()
+    if (-not [string]::IsNullOrWhiteSpace($c)) { $validClusters[$c] = $true }
+    $ct = "$($row.cell_type)".Trim().ToLower()
+    if (-not [string]::IsNullOrWhiteSpace($ct)) { $validCellTypes[$ct] = $true }
+  }
+
+  while ($true) {
+    $pickRaw = Read-Host "Pick target group (required: cluster:<id> or cell_type:<name>)"
+    $pick = "$pickRaw".Trim()
+    if ([string]::IsNullOrWhiteSpace($pick)) {
+      Write-Host "Target group is required."
+      continue
+    }
+    if ($pick -match '^cluster:(.+)$') {
+      $cid = $Matches[1].Trim()
+      if ($validClusters.ContainsKey($cid)) {
+        $envMap["VC_CELL_GROUP"] = "cluster:$cid"
+        break
+      }
+      Write-Host "Invalid cluster id: $cid"
+      continue
+    }
+    if ($pick -match '^cell_type:(.+)$') {
+      $ct = $Matches[1].Trim().ToLower()
+      if ($validCellTypes.ContainsKey($ct)) {
+        $envMap["VC_CELL_GROUP"] = "cell_type:$ct"
+        break
+      }
+      Write-Host "Invalid cell type: $ct"
+      continue
+    }
+    Write-Host "Invalid format. Use cluster:<id> or cell_type:<name>."
   }
 }
 
