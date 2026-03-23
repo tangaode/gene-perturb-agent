@@ -93,9 +93,14 @@ def cluster_cells(
     sc.pp.log1p(adata)
     adata.raw = adata.copy()
 
-    sc.pp.highly_variable_genes(adata, n_top_genes=min(n_top_genes, adata.n_vars), flavor="seurat")
-    sc.pp.scale(adata, max_value=10)
-    sc.tl.pca(adata, use_highly_variable=True, svd_solver="arpack")
+    sc.pp.highly_variable_genes(
+        adata,
+        n_top_genes=min(n_top_genes, adata.n_vars),
+        flavor="seurat",
+        subset=True,
+    )
+    sc.pp.scale(adata, max_value=10, zero_center=False)
+    sc.tl.pca(adata, use_highly_variable=True, svd_solver="arpack", zero_center=False)
 
     use_harmony = adata.obs["sample"].nunique() > 1
     rep = "X_pca"
