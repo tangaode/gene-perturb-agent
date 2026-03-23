@@ -1,9 +1,12 @@
+import logging
+
 from fastapi import FastAPI, HTTPException
 
 from .schemas import PerturbRequest, PerturbResponse
 from .model_runner import run_virtualcell
 
 app = FastAPI(title="VirtualCell Service")
+logger = logging.getLogger("virtualcell_service")
 
 
 @app.get("/health")
@@ -17,6 +20,7 @@ def perturb(req: PerturbRequest):
         results = run_virtualcell(req.gene, req.alpha, req.context)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception:
-        raise HTTPException(status_code=500, detail="virtualcell failed unexpectedly")
+    except Exception as e:
+        logger.exception("Unhandled error in /perturb for gene=%s alpha=%s context=%s", req.gene, req.alpha, req.context)
+        raise HTTPException(status_code=500, detail=f"virtualcell failed unexpectedly: {e}")
     return PerturbResponse(input_gene=req.gene, context=req.context, results=results)
