@@ -93,11 +93,28 @@ def _params_signature(params: dict) -> str:
     return hashlib.md5(raw.encode("utf-8")).hexdigest()[:8]
 
 
-def _ckpt_dir(gene: str, alpha: float, context: str, params: dict) -> Path:
+def _dataset_signature(X, genes, barcodes) -> str:
+    """Stable signature to prevent cache collisions across datasets/cell-groups."""
+    h = hashlib.md5()
+    h.update(str(DATA_DIR.resolve()).encode("utf-8"))
+    h.update(f"|cells={X.shape[0]}|genes={X.shape[1]}".encode("utf-8"))
+    # lightweight content hints
+    for g in list(genes[:20]) + list(genes[-20:]):
+        h.update(str(g).encode("utf-8"))
+        h.update(b"|")
+    for b in list(barcodes[:20]) + list(barcodes[-20:]):
+        h.update(str(b).encode("utf-8"))
+        h.update(b"|")
+    group = os.environ.get("VC_CELL_GROUP", "").strip()
+    h.update(f"|group={group}".encode("utf-8"))
+    return h.hexdigest()[:10]
+
+
+def _ckpt_dir(gene: str, alpha: float, context: str, params: dict, data_sig: str) -> Path:
     safe_gene = gene.replace("/", "_")
     safe_ctx = context.replace("/", "_")
     sig = _params_signature(params)
-    return CACHE_DIR / f"ckpt_{safe_gene}_{alpha:.2f}_{safe_ctx}_{sig}"
+    return CACHE_DIR / f"ckpt_{safe_gene}_{alpha:.2f}_{safe_ctx}_{sig}_{data_sig}"
 
 
 def _df_to_results(df: pd.DataFrame) -> List[GeneResult]:
@@ -132,17 +149,18 @@ def run_virtualcell(gene: str, alpha: float, context: str = "default") -> List[G
 
     gene = gene.strip().upper()
     params = _model_params()
-    cache = _cache_path(gene, alpha, context, params)
-    if cache.exists():
-        df = pd.read_csv(cache)
-        return _df_to_results(df)
-
     X, genes, barcodes = _load_data()
     if gene not in genes:
         raise ValueError(f"Input gene '{gene}' was not found in this dataset")
     X = _apply_cell_group_filter(X, barcodes)
+    data_sig = _dataset_signature(X, genes, barcodes)
+    cache = _cache_path(gene, alpha, context, params)
+    cache = cache.with_name(f"{cache.stem}_{data_sig}{cache.suffix}")
+    if cache.exists():
+        df = pd.read_csv(cache)
+        return _df_to_results(df)
     model = DoseDirKO(**params)
-    ckpt = _ckpt_dir(gene, alpha, context, params)
+    ckpt = _ckpt_dir(gene, alpha, context, params, data_sig)
     df = model.run(X, genes, ko_gene=gene, alpha=alpha, checkpoint_dir=str(ckpt))
     df.to_csv(cache, index=False)
     return _df_to_results(df)
